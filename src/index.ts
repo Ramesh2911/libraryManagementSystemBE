@@ -45,24 +45,31 @@ import adminRoutes from './routes/admin.routes';
 import { swaggerUi, openapiSpec, swaggerUiOptions } from './swagger';
 import './jobs/cron'; // Start cron jobs
 
-app.use('/api/auth', authRoutes);
-app.use('/api/libraries', libraryRoutes);
-app.use('/api/fee-plans', feePlanRoutes);
-app.use('/api/floors', floorRoutes);
-app.use('/api/room-types', roomTypeRoutes);
-app.use('/api/time-slots', timeSlotRoutes);
-app.use('/api/reading-rooms', readingRoomRoutes);
-app.use('/api/seats', seatRoutes);
-app.use('/api/students', studentRoutes);
-app.use('/api/admissions', admissionRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/deposits', depositRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/lockers', lockerRoutes);
-app.use('/api/visitors', visitorRoutes);
-app.use('/api/coordinators', coordinatorRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/admin', adminRoutes);
+// v1 canonical mounts + legacy /api/* (backward compatible)
+const mounts: Array<[string, import('express').Router]> = [
+  ['/auth', authRoutes],
+  ['/libraries', libraryRoutes],
+  ['/fee-plans', feePlanRoutes],
+  ['/floors', floorRoutes],
+  ['/room-types', roomTypeRoutes],
+  ['/time-slots', timeSlotRoutes],
+  ['/reading-rooms', readingRoomRoutes],
+  ['/seats', seatRoutes],
+  ['/students', studentRoutes],
+  ['/admissions', admissionRoutes],
+  ['/payments', paymentRoutes],
+  ['/deposits', depositRoutes],
+  ['/attendance', attendanceRoutes],
+  ['/lockers', lockerRoutes],
+  ['/visitors', visitorRoutes],
+  ['/coordinators', coordinatorRoutes],
+  ['/ai', aiRoutes],
+  ['/admin', adminRoutes],
+];
+for (const [path, router] of mounts) {
+  app.use(`/api/v1${path}`, router);
+  app.use(`/api${path}`, router); // legacy
+}
 
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapiSpec, swaggerUiOptions));

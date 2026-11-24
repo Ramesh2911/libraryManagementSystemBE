@@ -1,8 +1,8 @@
-openapi: 3.0.3
+﻿openapi: 3.0.3
 info:
   title: SmartLibrary API
   description: |
-    SmartLibrary Library Management System — REST API.
+    SmartLibrary Library Management System â€” REST API.
 
     **Envelope:** every JSON response uses `{success, statusCode, message, data, timestamp}`.
 
@@ -14,6 +14,8 @@ info:
     Sources: existing `src/routes/*` (implemented) + `doc/*.md` (planned).
   version: 1.0.0
 servers:
+  - url: https://librarymanagementsystembe-tf9i.onrender.com
+    description: "Render production"
   - url: http://localhost:3000
     description: "Local dev"
   - url: https://api.smartlibrary.app
@@ -24,9 +26,9 @@ tags:
   - name: Auth
     description: "Authentication, OTP, sessions (doc: auth_api.md)"
   - name: Owner Setup
-    description: "6-step owner onboarding (planned — auth_api.md)"
+    description: "6-step owner onboarding (planned â€” auth_api.md)"
   - name: Student Self
-    description: "Student self-profile (planned — auth_api.md)"
+    description: "Student self-profile (planned â€” auth_api.md)"
   - name: Libraries
   - name: Floors
   - name: Room Types
@@ -39,7 +41,7 @@ tags:
   - name: Students
     description: "Admin-side student CRUD (existing)"
   - name: Owner Students
-    description: "Owner student/admission/payment module (planned — owner_student_management_api.md)"
+    description: "Owner student/admission/payment module (planned â€” owner_student_management_api.md)"
   - name: Admissions
   - name: Payments
   - name: Deposits
@@ -51,9 +53,9 @@ tags:
   - name: Admin
     description: "Super-admin platform metrics"
   - name: Owner Dashboard
-    description: "Dashboard, hubs, offers, notifications (planned — owner_dashboard_api.md)"
+    description: "Dashboard, hubs, offers, notifications (planned â€” owner_dashboard_api.md)"
   - name: Owner Analytics
-    description: "Consolidated analytics + export (planned — owner_analytics_api.md)"
+    description: "Consolidated analytics + export (planned â€” owner_analytics_api.md)"
 security:
   - bearerAuth: []
 paths:
@@ -76,7 +78,7 @@ paths:
                   redis: { type: string, example: ready }
 
   # ===================== AUTH (implemented) =====================
-  /api/auth/signup:
+  /api/v1/auth/signup:
     post:
       tags: [Auth]
       summary: "Owner signup (tenant registration)"
@@ -100,7 +102,7 @@ paths:
           $ref: '#/components/responses/Envelope200'
         '400': { $ref: '#/components/responses/Error400' }
         '409': { $ref: '#/components/responses/Error409' }
-  /api/auth/login:
+  /api/v1/auth/login:
     post:
       tags: [Auth]
       summary: "Tenant login (password; OTP: /send-otp + /verify-otp)"
@@ -122,7 +124,7 @@ paths:
           description: "Login result (may require 2FA step)"
           $ref: '#/components/responses/Envelope200'
         '401': { $ref: '#/components/responses/Error401' }
-  /api/auth/login/verify-2fa:
+  /api/v1/auth/login/verify-2fa:
     post:
       tags: [Auth]
       summary: "Complete login with TOTP 2FA code"
@@ -140,7 +142,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '401': { $ref: '#/components/responses/Error401' }
-  /api/auth/admin/login:
+  /api/v1/auth/admin/login:
     post:
       tags: [Auth, Admin]
       summary: "Super-admin login"
@@ -158,7 +160,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '401': { $ref: '#/components/responses/Error401' }
-  /api/auth/refresh:
+  /api/v1/auth/refresh:
     post:
       tags: [Auth]
       summary: "Refresh access token"
@@ -179,7 +181,7 @@ paths:
     post:
       tags: [Auth]
       summary: "Refresh access token (doc-style path)"
-      description: "Alias of POST /api/auth/refresh — matches auth_api.md path."
+      description: "Alias of POST /api/auth/refresh â€” matches auth_api.md path."
       x-status: implemented
       requestBody:
         required: true
@@ -197,7 +199,7 @@ paths:
     post:
       tags: [Auth, Admin]
       summary: "Super-admin login (doc-style path)"
-      description: "Alias of POST /api/auth/admin/login — matches auth_api.md path."
+      description: "Alias of POST /api/auth/admin/login â€” matches auth_api.md path."
       x-status: implemented
       requestBody:
         required: true
@@ -212,7 +214,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '401': { $ref: '#/components/responses/Error401' }
-  /api/auth/logout:
+  /api/v1/auth/logout:
     post:
       tags: [Auth]
       summary: "Logout (revoke session)"
@@ -220,7 +222,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '401': { $ref: '#/components/responses/Error401' }
-  /api/auth/reset-password:
+  /api/v1/auth/reset-password:
     post:
       tags: [Auth]
       summary: "Reset password (phone OTP verify)"
@@ -240,7 +242,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }
-  /api/auth/2fa/setup:
+  /api/v1/auth/2fa/setup:
     post:
       tags: [Auth]
       summary: "Start TOTP 2FA setup (returns QR / secret)"
@@ -248,7 +250,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '401': { $ref: '#/components/responses/Error401' }
-  /api/auth/2fa/verify:
+  /api/v1/auth/2fa/verify:
     post:
       tags: [Auth]
       summary: "Confirm TOTP 2FA setup"
@@ -265,7 +267,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }
-  /api/auth/sessions:
+  /api/v1/auth/sessions:
     get:
       tags: [Auth]
       summary: "List active sessions"
@@ -273,7 +275,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '401': { $ref: '#/components/responses/Error401' }
-  /api/auth/sessions/{sessionId}:
+  /api/v1/auth/sessions/{sessionId}:
     delete:
       tags: [Auth]
       summary: "Revoke a session"
@@ -287,12 +289,12 @@ paths:
         '200': { $ref: '#/components/responses/Envelope200' }
         '404': { $ref: '#/components/responses/Error404' }
 
-  # ===================== AUTH (planned — auth_api.md) =====================
-  /api/auth/send-otp:
+  # ===================== AUTH (planned â€” auth_api.md) =====================
+  /api/v1/auth/send-otp:
     post:
       tags: [Auth]
       summary: "Send 6-digit OTP to phone"
-      description: "Dev bypass — only `9876543210` accepted; OTP is always `123456` (Redis, 5min TTL, 30s cooldown, max 3/10min). SMS gateway comes later. Response may include `devOtp` outside production."
+      description: "Dev bypass â€” only `9876543210` accepted; OTP is always `123456` (Redis, 5min TTL, 30s cooldown, max 3/10min). SMS gateway comes later. Response may include `devOtp` outside production."
       x-status: implemented
       security: []
       requestBody:
@@ -308,7 +310,7 @@ paths:
         '200': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }
         '429': { $ref: '#/components/responses/Error429' }
-  /api/auth/resend-otp:
+  /api/v1/auth/resend-otp:
     post:
       tags: [Auth]
       summary: "Resend OTP (30s cooldown, max 3 / 10min)"
@@ -326,10 +328,10 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '429': { $ref: '#/components/responses/Error429' }
-  /api/auth/verify-otp:
+  /api/v1/auth/verify-otp:
     post:
       tags: [Auth]
-      summary: "Verify OTP → issue JWT pair"
+      summary: "Verify OTP â†’ issue JWT pair"
       description: "Returns access + refresh token, `user`, and `isSetupComplete` / `isProfileComplete` flags. Owner looked up by contact = phone."
       x-status: implemented
       security: []
@@ -349,7 +351,7 @@ paths:
         '400': { $ref: '#/components/responses/Error400' }
         '401': { $ref: '#/components/responses/Error401' }
         '404': { $ref: '#/components/responses/Error404' }
-  /api/auth/google:
+  /api/v1/auth/google:
     post:
       tags: [Auth]
       summary: "Sign in with Google ID token"
@@ -367,7 +369,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '401': { $ref: '#/components/responses/Error401' }
-  /api/auth/me:
+  /api/v1/auth/me:
     get:
       tags: [Auth]
       summary: "Current user profile + roles + setup flags"
@@ -377,7 +379,7 @@ paths:
         '401': { $ref: '#/components/responses/Error401' }
 
   # ===================== LIBRARIES (implemented) =====================
-  /api/libraries:
+  /api/v1/libraries:
     get:
       tags: [Libraries]
       summary: "List libraries (hubs) for tenant"
@@ -403,7 +405,7 @@ paths:
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }
-  /api/libraries/{id}:
+  /api/v1/libraries/{id}:
     parameters:
       - name: id
         in: path
@@ -425,7 +427,7 @@ paths:
         '404': { $ref: '#/components/responses/Error404' }
 
   # ===================== FLOORS (implemented) =====================
-  /api/floors:
+  /api/v1/floors:
     get:
       tags: [Floors]
       summary: "List floors"
@@ -454,7 +456,7 @@ paths:
                 displayOrder: { type: integer }
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
-  /api/floors/{id}:
+  /api/v1/floors/{id}:
     parameters:
       - name: id
         in: path
@@ -474,7 +476,7 @@ paths:
         '200': { $ref: '#/components/responses/Envelope200' }
 
   # ===================== ROOM TYPES =====================
-  /api/room-types:
+  /api/v1/room-types:
     get:
       tags: [Room Types]
       summary: "List room types"
@@ -497,7 +499,7 @@ paths:
                 description: "{ type: string }"
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
-  /api/room-types/{id}:
+  /api/v1/room-types/{id}:
     parameters:
       - name: id
         in: path
@@ -517,7 +519,7 @@ paths:
         '200': { $ref: '#/components/responses/Envelope200' }
 
   # ===================== TIME SLOTS =====================
-  /api/time-slots:
+  /api/v1/time-slots:
     get:
       tags: [Time Slots]
       summary: "List time slots"
@@ -541,7 +543,7 @@ paths:
                 endTime: { type: string, example: '12:00' }
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
-  /api/time-slots/{id}:
+  /api/v1/time-slots/{id}:
     parameters:
       - name: id
         in: path
@@ -561,7 +563,7 @@ paths:
         '200': { $ref: '#/components/responses/Envelope200' }
 
   # ===================== READING ROOMS =====================
-  /api/reading-rooms:
+  /api/v1/reading-rooms:
     get:
       tags: [Reading Rooms]
       summary: "List reading rooms"
@@ -594,7 +596,7 @@ paths:
                 capacity: { type: integer }
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
-  /api/reading-rooms/{id}:
+  /api/v1/reading-rooms/{id}:
     parameters:
       - name: id
         in: path
@@ -614,7 +616,7 @@ paths:
         '200': { $ref: '#/components/responses/Envelope200' }
 
   # ===================== SEATS (implemented + planned contract) =====================
-  /api/seats/map:
+  /api/v1/seats/map:
     get:
       tags: [Seats]
       summary: "Seat map for floor/room"
@@ -646,7 +648,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }
-  /api/seats/{id}/allocate:
+  /api/v1/seats/{id}/allocate:
     post:
       tags: [Seats]
       summary: "Allocate seat to student"
@@ -671,7 +673,7 @@ paths:
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
         '409': { $ref: '#/components/responses/Error409' }
-  /api/seats/{id}/transfer:
+  /api/v1/seats/{id}/transfer:
     post:
       tags: [Seats]
       summary: "Transfer seat (atomic old-vacate + new-allocate)"
@@ -696,7 +698,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '409': { $ref: '#/components/responses/Error409' }
-  /api/seats/{id}/vacate:
+  /api/v1/seats/{id}/vacate:
     post:
       tags: [Seats]
       summary: "Vacate occupied seat"
@@ -709,7 +711,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '404': { $ref: '#/components/responses/Error404' }
-  /api/seats/{id}/status:
+  /api/v1/seats/{id}/status:
     patch:
       tags: [Seats]
       summary: "Set seat status (block / maintenance / restore)"
@@ -732,7 +734,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }
-  /api/seats/{id}/history:
+  /api/v1/seats/{id}/history:
     get:
       tags: [Seats]
       summary: "Seat allocation history"
@@ -746,7 +748,7 @@ paths:
         '200': { $ref: '#/components/responses/Envelope200' }
 
   # ===================== LOCKERS =====================
-  /api/lockers:
+  /api/v1/lockers:
     get:
       tags: [Lockers]
       summary: "List lockers"
@@ -789,7 +791,7 @@ paths:
                 monthlyFee: { type: number }
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
-  /api/lockers/{id}/assign:
+  /api/v1/lockers/{id}/assign:
     post:
       tags: [Lockers]
       summary: "Assign locker to student (atomic)"
@@ -811,7 +813,7 @@ paths:
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }
-  /api/lockers/{id}/release:
+  /api/v1/lockers/{id}/release:
     post:
       tags: [Lockers]
       summary: "Release assigned locker"
@@ -824,10 +826,10 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '404': { $ref: '#/components/responses/Error404' }
-  /api/lockers/{id}/status:
+  /api/v1/lockers/{id}/status:
     patch:
       tags: [Lockers]
-      summary: "Toggle AVAILABLE ↔ MAINTENANCE (ASSIGNED excluded)"
+      summary: "Toggle AVAILABLE â†” MAINTENANCE (ASSIGNED excluded)"
       description: "Planned (owner_coordinator_locker_management_api.md)."
       x-status: planned
       parameters:
@@ -848,11 +850,11 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '409': { $ref: '#/components/responses/Error409' }
-  /api/lockers/{id}:
+  /api/v1/lockers/{id}:
     get:
       tags: [Lockers]
       summary: "Locker detail (optional)"
-      description: "Doc: not required if list includes currentAssignment — add only if UI needs a detail route."
+      description: "Doc: not required if list includes currentAssignment â€” add only if UI needs a detail route."
       x-status: planned
       parameters:
         - name: id
@@ -887,7 +889,7 @@ paths:
         '404': { $ref: '#/components/responses/Error404' }
 
   # ===================== STUDENTS (existing admin CRUD) =====================
-  /api/students/register:
+  /api/v1/students/register:
     post:
       tags: [Students]
       summary: "Register student (owner/coordinator)"
@@ -908,7 +910,7 @@ paths:
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }
-  /api/students:
+  /api/v1/students:
     get:
       tags: [Students]
       summary: "List students"
@@ -922,7 +924,7 @@ paths:
           schema: { type: integer }
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
-  /api/students/{id}:
+  /api/v1/students/{id}:
     parameters:
       - name: id
         in: path
@@ -944,7 +946,7 @@ paths:
         '403': { $ref: '#/components/responses/Error403' }
 
   # ===================== ADMISSIONS =====================
-  /api/admissions:
+  /api/v1/admissions:
     post:
       tags: [Admissions]
       summary: "Create admission (seat + fee obligation)"
@@ -964,7 +966,7 @@ paths:
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
         '409': { $ref: '#/components/responses/Error409' }
-  /api/admissions/{id}/cancel:
+  /api/v1/admissions/{id}/cancel:
     post:
       tags: [Admissions]
       summary: "Cancel admission"
@@ -979,7 +981,7 @@ paths:
         '404': { $ref: '#/components/responses/Error404' }
 
   # ===================== PAYMENTS =====================
-  /api/payments/record:
+  /api/v1/payments/record:
     post:
       tags: [Payments]
       summary: "Record payment (allocates to obligations)"
@@ -1000,7 +1002,7 @@ paths:
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }
-  /api/payments/ledger/{studentId}:
+  /api/v1/payments/ledger/{studentId}:
     get:
       tags: [Payments]
       summary: "Student payment ledger"
@@ -1014,7 +1016,7 @@ paths:
         '200': { $ref: '#/components/responses/Envelope200' }
 
   # ===================== DEPOSITS =====================
-  /api/deposits:
+  /api/v1/deposits:
     post:
       tags: [Deposits]
       summary: "Collect security deposit"
@@ -1031,7 +1033,7 @@ paths:
                 amount: { type: number }
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
-  /api/deposits/{id}/refund:
+  /api/v1/deposits/{id}/refund:
     post:
       tags: [Deposits]
       summary: "Refund deposit"
@@ -1046,7 +1048,7 @@ paths:
         '404': { $ref: '#/components/responses/Error404' }
 
   # ===================== ATTENDANCE (existing) =====================
-  /api/attendance/sync:
+  /api/v1/attendance/sync:
     post:
       tags: [Attendance]
       summary: "Bulk ping sync (device entry/exit logs)"
@@ -1070,7 +1072,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }
-  /api/attendance/{studentId}:
+  /api/v1/attendance/{studentId}:
     get:
       tags: [Attendance]
       summary: "Student attendance history"
@@ -1104,12 +1106,12 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
 
-  # ===================== ATTENDANCE (planned — QR + register) =====================
-  /api/attendance/qr/session:
+  # ===================== ATTENDANCE (planned â€” QR + register) =====================
+  /api/v1/attendance/qr/session:
     post:
       tags: [Attendance]
       summary: "Create QR session for room"
-      description: "Planned — owner/coordinator; signed QR payload valid for limited window."
+      description: "Planned â€” owner/coordinator; signed QR payload valid for limited window."
       x-status: planned
       requestBody:
         required: true
@@ -1136,7 +1138,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '404': { $ref: '#/components/responses/Error404' }
-  /api/attendance/qr/session/stop:
+  /api/v1/attendance/qr/session/stop:
     post:
       tags: [Attendance]
       summary: "Stop active QR session"
@@ -1152,7 +1154,7 @@ paths:
                 readingRoomId: { type: string }
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
-  /api/attendance/qr/check-in:
+  /api/v1/attendance/qr/check-in:
     post:
       tags: [Attendance]
       summary: "Student QR check-in (idempotent via deviceEventId)"
@@ -1171,11 +1173,11 @@ paths:
         '201': { $ref: '#/components/responses/Envelope200' }
         '401': { $ref: '#/components/responses/Error401' }
         '409': { $ref: '#/components/responses/Error409' }
-  /api/attendance:
+  /api/v1/attendance:
     get:
       tags: [Attendance]
       summary: "Daily attendance register (summary + paginated rows)"
-      description: "Planned — owner tenant-wide, coordinator assigned rooms only."
+      description: "Planned â€” owner tenant-wide, coordinator assigned rooms only."
       x-status: planned
       parameters:
         - name: date
@@ -1196,7 +1198,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '403': { $ref: '#/components/responses/Error403' }
-  /api/attendance/report/monthly:
+  /api/v1/attendance/report/monthly:
     get:
       tags: [Attendance]
       summary: "Monthly per-student attendance report"
@@ -1216,7 +1218,7 @@ paths:
         '200': { $ref: '#/components/responses/Envelope200' }
 
   # ===================== VISITORS =====================
-  /api/visitors:
+  /api/v1/visitors:
     get:
       tags: [Visitors]
       summary: "List visitors + status summary"
@@ -1315,11 +1317,11 @@ paths:
                     properties:
                       data: { $ref: '#/components/schemas/Visitor' }
         '400': { $ref: '#/components/responses/Error400' }
-  /api/visitors/{id}/status:
+  /api/v1/visitors/{id}/status:
     patch:
       tags: [Visitors]
       summary: "Update visitor status (checked_in / checked_out)"
-      description: "Single route for both check-in and check-out — do not add separate endpoints."
+      description: "Single route for both check-in and check-out â€” do not add separate endpoints."
       x-status: implemented
       parameters:
         - name: id
@@ -1356,7 +1358,7 @@ paths:
         '404': { $ref: '#/components/responses/Error404' }
 
   # ===================== COORDINATORS =====================
-  /api/coordinators:
+  /api/v1/coordinators:
     get:
       tags: [Coordinators]
       summary: "List coordinators"
@@ -1388,7 +1390,7 @@ paths:
                       readingRoomId: { type: string }
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
-  /api/coordinators/{id}/assignments:
+  /api/v1/coordinators/{id}/assignments:
     post:
       tags: [Coordinators]
       summary: "Assign floors/rooms to coordinator"
@@ -1400,7 +1402,7 @@ paths:
           schema: { type: string }
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
-  /api/coordinators/{id}/permissions:
+  /api/v1/coordinators/{id}/permissions:
     patch:
       tags: [Coordinators]
       summary: "Update coordinator permissions"
@@ -1412,7 +1414,7 @@ paths:
           schema: { type: string }
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
-  /api/coordinators/{id}/status:
+  /api/v1/coordinators/{id}/status:
     patch:
       tags: [Coordinators]
       summary: "Activate/deactivate coordinator"
@@ -1426,7 +1428,7 @@ paths:
         '200': { $ref: '#/components/responses/Envelope200' }
 
   # ===================== AI =====================
-  /api/ai/query:
+  /api/v1/ai/query:
     post:
       tags: [AI]
       summary: "Natural-language analytics query (owner only)"
@@ -1445,7 +1447,7 @@ paths:
         '403': { $ref: '#/components/responses/Error403' }
 
   # ===================== ADMIN (super-admin) =====================
-  /api/admin/dashboard:
+  /api/v1/admin/dashboard:
     get:
       tags: [Admin]
       summary: "Platform metrics (owners, tenants, MRR)"
@@ -1453,21 +1455,21 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '401': { $ref: '#/components/responses/Error401' }
-  /api/admin/subscriptions:
+  /api/v1/admin/subscriptions:
     get:
       tags: [Admin]
       summary: "List subscriptions"
       x-status: implemented
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
-  /api/admin/owners:
+  /api/v1/admin/owners:
     get:
       tags: [Admin]
       summary: "List owner accounts"
       x-status: implemented
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
-  /api/admin/revenue-analytics:
+  /api/v1/admin/revenue-analytics:
     get:
       tags: [Admin]
       summary: "Platform revenue analytics"
@@ -1475,11 +1477,11 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
 
-  # ===================== OWNER SETUP (planned — auth_api.md) =====================
+  # ===================== OWNER SETUP (planned â€” auth_api.md) =====================
   /api/v1/owner/setup/basic-details:
     post:
       tags: [Owner Setup]
-      summary: "Step 1 — owner + library basic details"
+      summary: "Step 1 â€” owner + library basic details"
       x-status: planned
       requestBody:
         required: true
@@ -1500,7 +1502,7 @@ paths:
   /api/v1/owner/setup/location-details:
     post:
       tags: [Owner Setup]
-      summary: "Step 2 — address / geo"
+      summary: "Step 2 â€” address / geo"
       x-status: planned
       requestBody:
         required: true
@@ -1521,7 +1523,7 @@ paths:
   /api/v1/owner/setup/operation-timing:
     post:
       tags: [Owner Setup]
-      summary: "Step 3 — opening hours + time slots"
+      summary: "Step 3 â€” opening hours + time slots"
       x-status: planned
       requestBody:
         required: true
@@ -1549,7 +1551,7 @@ paths:
   /api/v1/owner/setup/rooms-setup:
     post:
       tags: [Owner Setup]
-      summary: "Step 4 — floors + room types + reading rooms"
+      summary: "Step 4 â€” floors + room types + reading rooms"
       x-status: planned
       requestBody:
         required: true
@@ -1579,7 +1581,7 @@ paths:
   /api/v1/owner/setup/fees-deposit:
     post:
       tags: [Owner Setup]
-      summary: "Step 5 — fee plans + deposit config"
+      summary: "Step 5 â€” fee plans + deposit config"
       x-status: planned
       requestBody:
         required: true
@@ -1603,22 +1605,22 @@ paths:
   /api/v1/owner/setup/review-summary:
     get:
       tags: [Owner Setup]
-      summary: "Step 6a — review everything before finalize"
+      summary: "Step 6a â€” review everything before finalize"
       x-status: planned
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
   /api/v1/owner/setup/finalize:
     post:
       tags: [Owner Setup]
-      summary: "Step 6b — commit draft (single transaction)"
+      summary: "Step 6b â€” commit draft (single transaction)"
       description: "Creates Library + Floor + RoomType + TimeSlots + ReadingRoom + Seats + FeePlan atomically."
       x-status: planned
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '409': { $ref: '#/components/responses/Error409' }
 
-  # ===================== STUDENT SELF (planned — auth_api.md) =====================
-  /api/student/register-profile:
+  # ===================== STUDENT SELF (planned â€” auth_api.md) =====================
+  /api/v1/student/register-profile:
     post:
       tags: [Student Self]
       summary: "Student registers profile after OTP login"
@@ -1640,7 +1642,7 @@ paths:
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
         '409': { $ref: '#/components/responses/Error409' }
-  /api/student/profile:
+  /api/v1/student/profile:
     get:
       tags: [Student Self]
       summary: "Get own profile"
@@ -1664,7 +1666,7 @@ paths:
                 address: { type: string }
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
-  /api/student/preferences:
+  /api/v1/student/preferences:
     patch:
       tags: [Student Self]
       summary: "Update notification / locale preferences"
@@ -1682,12 +1684,12 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
 
-  # ===================== OWNER STUDENTS (planned — owner_student_management_api.md) =====================
+  # ===================== OWNER STUDENTS (planned â€” owner_student_management_api.md) =====================
   /api/v1/owner/students:
     get:
       tags: [Owner Students]
       summary: "List students + hub-wide summary counters"
-      description: "Dual filters: studentStatus × paymentStatus × search × seat/locker flags."
+      description: "Dual filters: studentStatus Ã— paymentStatus Ã— search Ã— seat/locker flags."
       x-status: planned
       parameters:
         - name: search
@@ -1831,7 +1833,7 @@ paths:
   /api/v1/owner/students/{id}/lifecycle:
     patch:
       tags: [Owner Students]
-      summary: "Lifecycle transition (active ↔ closed)"
+      summary: "Lifecycle transition (active â†” closed)"
       x-status: planned
       parameters:
         - name: id
@@ -1963,7 +1965,7 @@ paths:
     get:
       tags: [Owner Students]
       summary: "Student form configuration (dropdowns/rules)"
-      description: "From owner_student_management_api.md — fee plans, room types, required fields for Add Student form."
+      description: "From owner_student_management_api.md â€” fee plans, room types, required fields for Add Student form."
       x-status: planned
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
@@ -2156,7 +2158,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
 
-  # ===================== STUDENT REQUESTS (planned — new model) =====================
+  # ===================== STUDENT REQUESTS (planned â€” new model) =====================
   /api/v1/owner/student-requests:
     get:
       tags: [Owner Students]
@@ -2250,7 +2252,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
 
-  # ===================== OWNER DASHBOARD (planned — owner_dashboard_api.md) =====================
+  # ===================== OWNER DASHBOARD (planned â€” owner_dashboard_api.md) =====================
   /api/v1/owner/hubs:
     get:
       tags: [Owner Dashboard]
@@ -2407,7 +2409,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
 
-  # ===================== OWNER ANALYTICS (planned — owner_analytics_api.md) =====================
+  # ===================== OWNER ANALYTICS (planned â€” owner_analytics_api.md) =====================
   /api/v1/owner/analytics:
     get:
       tags: [Owner Analytics]
