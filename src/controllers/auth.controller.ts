@@ -5,7 +5,6 @@ import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
 import { prisma, getTenantPrisma } from '../config/prisma';
 import { redis } from '../config/redis';
-import { getAuth } from '../config/firebase';
 import { sendOtp, verifyOtp } from '../services/otp.service';
 import { ok, fail } from '../utils/response';
 
@@ -32,24 +31,20 @@ const storeSession = async (userId: string, refreshToken: string, device: string
 
 export const signup = async (req: Request, res: Response) => {
   try {
-    const { name, password, subscriptionPlanId, firebaseIdToken } = req.body;
-    
-    if (!name || !password || !firebaseIdToken) {
-      return res.status(400).json({ error: 'Name, password, and firebaseIdToken are required' });
+    const { name, password, subscriptionPlanId, contact, otp } = req.body;
+
+    if (!name || !password || !contact || !otp) {
+      return res.status(400).json({ error: 'name, password, contact, and otp are required' });
     }
 
-    let verifiedContact: string;
-    try {
-      const decodedToken = await getAuth().verifyIdToken(firebaseIdToken);
-      if (!decodedToken.phone_number) {
-        return res.status(400).json({ error: 'Firebase token does not contain a phone number' });
-      }
-      verifiedContact = decodedToken.phone_number;
-    } catch (fbErr) {
-      return res.status(401).json({ error: 'Invalid or expired Firebase ID Token' });
+    // Verify phone OTP (dev allowlist; SMS gateway later)
+    const check = await verifyOtp(String(contact), String(otp));
+    if (!check.ok) {
+      const status = check.code === 'OTP_EXPIRED' ? 400 : 401;
+      return res.status(status).json({ error: check.message });
     }
 
-    const existingOwner = await prisma.owner.findUnique({ where: { contact: verifiedContact } });
+    const existingOwner = await prisma.owner.findUnique({ where: { contact: String(contact) } });
     if (existingOwner) {
       return res.status(409).json({ error: 'Contact already registered' });
     }
@@ -59,7 +54,7 @@ export const signup = async (req: Request, res: Response) => {
     const newOwner = await prisma.owner.create({
       data: {
         name,
-        contact: verifiedContact,
+        contact: String(contact),
         password: hashedPassword,
         subscriptionPlanId,
       }
@@ -74,30 +69,16 @@ export const signup = async (req: Request, res: Response) => {
 
 export const tenantLogin = async (req: Request, res: Response) => {
   try {
-    const { contact, password, role, firebaseIdToken, device } = req.body;
+    const { contact, password, role, device } = req.body;
 
     if (!role) {
       return res.status(400).json({ error: 'Role is required' });
     }
-
-    let searchContact = contact;
-    let isFirebaseLogin = false;
-
-    // 1. If Firebase Token is provided, use it to extract the verified phone number
-    if (firebaseIdToken) {
-      try {
-        const decodedToken = await getAuth().verifyIdToken(firebaseIdToken);
-        if (!decodedToken.phone_number) {
-          return res.status(400).json({ error: 'Firebase token does not contain a phone number' });
-        }
-        searchContact = decodedToken.phone_number;
-        isFirebaseLogin = true;
-      } catch (fbErr) {
-        return res.status(401).json({ error: 'Invalid Firebase ID Token' });
-      }
-    } else if (!contact || !password) {
-      return res.status(400).json({ error: 'Missing contact/password or firebaseIdToken' });
+    if (!contact || !password) {
+      return res.status(400).json({ error: 'contact and password are required (OTP login: use /send-otp + /verify-otp)' });
     }
+
+    const searchContact = contact;
 
     let user;
     let tenantId;
@@ -124,15 +105,12 @@ export const tenantLogin = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
-    // 2. Verify password only if not logging in via Firebase OTP
-    if (!isFirebaseLogin) {
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch && password !== user.password) {
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch && password !== user.password) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // 3. 2FA Check (Applies to both Password and OTP logins if enabled)
+    // 2FA Check (Applies to password logins if enabled)
     if ('twoFaEnabled' in user && user.twoFaEnabled) {
       const tempToken = jwt.sign({ sub: userId, role, tenant_id: tenantId, isTemp: true }, process.env.JWT_SECRET || 'tenantsecret', { expiresIn: '10m' });
       return res.json({ message: '2FA required', tempToken });
@@ -164,23 +142,26 @@ export const tenantLogin = async (req: Request, res: Response) => {
 
 export const resetPassword = async (req: Request, res: Response) => {
   try {
-    const { firebaseIdToken, newPassword, role } = req.body;
-    if (!firebaseIdToken || !newPassword || !role) {
-      return res.status(400).json({ error: 'firebaseIdToken, newPassword, and role are required' });
+    const { phone, otp, newPassword, role } = req.body;
+    if (!phone || !otp || !newPassword || !role) {
+      return res.status(400).json({ error: 'phone, otp, newPassword, and role are required' });
     }
 
-    const decodedToken = await getAuth().verifyIdToken(firebaseIdToken);
-    const verifiedPhone = decodedToken.phone_number;
-    if (!verifiedPhone) return res.status(400).json({ error: 'Firebase token has no phone number' });
+    // Verify phone OTP (dev allowlist; SMS gateway later)
+    const check = await verifyOtp(String(phone), String(otp));
+    if (!check.ok) {
+      const status = check.code === 'OTP_EXPIRED' ? 400 : 401;
+      return res.status(status).json({ error: check.message });
+    }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     if (role === 'OWNER') {
-      const owner = await prisma.owner.findUnique({ where: { contact: verifiedPhone } });
+      const owner = await prisma.owner.findUnique({ where: { contact: String(phone) } });
       if (!owner) return res.status(404).json({ error: 'User not found' });
       await prisma.owner.update({ where: { tenant_id: owner.tenant_id }, data: { password: hashedPassword } });
     } else if (role === 'COORDINATOR') {
-      const coordinators = await prisma.coordinator.findMany({ where: { mobile: verifiedPhone } });
+      const coordinators = await prisma.coordinator.findMany({ where: { mobile: String(phone) } });
       if (!coordinators.length) return res.status(404).json({ error: 'User not found' });
       await prisma.coordinator.update({ where: { coordinator_id: coordinators[0].coordinator_id }, data: { password: hashedPassword } });
     } else {

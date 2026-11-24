@@ -87,13 +87,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [ownerName, libraryName, email, phone, password]
+              required: [name, password, contact, otp]
               properties:
-                ownerName: { type: string }
-                libraryName: { type: string }
-                email: { type: string, format: email }
-                phone: { type: string }
+                name: { type: string }
                 password: { type: string, format: password }
+                contact: { type: string, description: "10-digit phone (OTP verified)", example: "9876543210" }
+                otp: { type: string, example: "123456" }
+                subscriptionPlanId: { type: string }
       responses:
         '201':
           description: "Signup success"
@@ -103,7 +103,7 @@ paths:
   /api/auth/login:
     post:
       tags: [Auth]
-      summary: "Tenant login (password OR firebaseIdToken)"
+      summary: "Tenant login (password; OTP: /send-otp + /verify-otp)"
       x-status: implemented
       requestBody:
         required: true
@@ -111,11 +111,12 @@ paths:
           application/json:
             schema:
               type: object
+              required: [contact, password, role]
               properties:
-                email: { type: string, format: email }
+                contact: { type: string }
                 password: { type: string, format: password }
-                firebaseIdToken: { type: string }
-                phone: { type: string }
+                role: { type: string, enum: [OWNER, COORDINATOR, STUDENT] }
+                device: { type: string }
       responses:
         '200':
           description: "Login result (may require 2FA step)"
@@ -222,7 +223,7 @@ paths:
   /api/auth/reset-password:
     post:
       tags: [Auth]
-      summary: "Reset password"
+      summary: "Reset password (phone OTP verify)"
       x-status: implemented
       requestBody:
         required: true
@@ -230,9 +231,12 @@ paths:
           application/json:
             schema:
               type: object
+              required: [phone, otp, newPassword, role]
               properties:
-                email: { type: string }
-                newPassword: { type: string }
+                phone: { type: string, example: "9876543210" }
+                otp: { type: string, example: "123456" }
+                newPassword: { type: string, format: password }
+                role: { type: string, enum: [OWNER, COORDINATOR] }
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }

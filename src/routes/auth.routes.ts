@@ -21,7 +21,7 @@ const router = Router();
 
 // Public Routes
 router.post('/signup', signup);
-router.post('/login', tenantLogin); // Accepts password OR firebaseIdToken
+router.post('/login', tenantLogin); // password login (OTP login: /send-otp + /verify-otp)
 router.post('/login/verify-2fa', verify2FALogin);
 router.post('/admin/login', superAdminLogin);
 router.post('/refresh', refreshToken);
@@ -32,7 +32,7 @@ router.post('/send-otp', sendLoginOtp);
 router.post('/resend-otp', resendLoginOtp);
 router.post('/verify-otp', verifyLoginOtp);
 
-// Forgot / Reset Password (Firebase OTP verifies identity, then user provides new password)
+// Forgot / Reset Password (phone OTP verifies identity, then user provides new password)
 router.post('/reset-password', resetPassword);
 
 // Protected Routes (Require Authentication)
