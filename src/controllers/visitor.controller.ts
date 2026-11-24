@@ -42,12 +42,10 @@ export const getVisitors = async (req: Request, res: Response) => {
 
     const q = listVisitorsQuerySchema.parse(req.query);
 
-    // Summary counts from the UNFILTERED set (doc §5 behavior)
-    const [total_count, checked_in_count, checked_out_count] = await Promise.all([
-      prisma.visitor.count(),
-      prisma.visitor.count({ where: { status: 'CHECKED_IN' } }),
-      prisma.visitor.count({ where: { status: 'CHECKED_OUT' } }),
-    ]);
+    // Sequential (not Promise.all) — each op opens its own tx; parallel txs exhaust Render free pool
+    const total_count = await prisma.visitor.count();
+    const checked_in_count = await prisma.visitor.count({ where: { status: 'CHECKED_IN' } });
+    const checked_out_count = await prisma.visitor.count({ where: { status: 'CHECKED_OUT' } });
 
     // Filters apply only to the visitors array
     const where: any = {};

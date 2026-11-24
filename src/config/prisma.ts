@@ -13,13 +13,15 @@ export function getTenantPrisma(tenantId: string) {
     query: {
       $allModels: {
         async $allOperations({ args, query }) {
-          // Wrap all queries in an interactive transaction
-          return prisma.$transaction(async (tx) => {
-            // Set the tenant context for this transaction
-            await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
-            // Execute the original query
-            return query(args);
-          });
+          // Wrap all queries in an interactive transaction.
+          // Render free Postgres is slow/cold — raise timeout to avoid P2028.
+          return prisma.$transaction(
+            async (tx) => {
+              await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
+              return query(args);
+            },
+            { timeout: 30_000, maxWait: 10_000 }
+          );
         },
       },
     },

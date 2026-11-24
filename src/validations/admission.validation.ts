@@ -1,15 +1,16 @@
 import { z } from 'zod';
+import { uuidField } from './common';
 
 export const createAdmissionSchema = z.object({
-  student_id: z.string().uuid("Invalid student ID"),
-  library_id: z.string().uuid("Invalid library ID"),
-  room_id: z.string().uuid("Invalid room ID").optional(),
-  plan_id: z.string().uuid("Invalid plan ID").optional(),
+  student_id: uuidField("Invalid student ID"),
+  library_id: uuidField("Invalid library ID"),
+  room_id: uuidField("Invalid room ID").optional(),
+  plan_id: uuidField("Invalid plan ID").optional(),
   
   // Seat Assignments (optional)
   seat_assignments: z.array(z.object({
-    seat_id: z.string().uuid("Invalid seat ID"),
-    slot_id: z.string().uuid("Invalid slot ID").optional()
+    seat_id: uuidField("Invalid seat ID"),
+    slot_id: uuidField("Invalid slot ID").optional()
   })).optional(),
 
   // Fee Obligation

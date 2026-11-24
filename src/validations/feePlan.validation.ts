@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { uuidField } from './common';
 
 export const createFeePlanSchema = z.object({
-  library_id: z.string().uuid("Invalid library ID"),
+  library_id: uuidField("Invalid library ID"),
   name: z.string().min(1, "Name is required"),
   billing_period: z.enum(['MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'YEARLY', 'CUSTOM']),
   amount: z.number().positive("Amount must be positive"),

@@ -371,7 +371,7 @@ paths:
     get:
       tags: [Auth]
       summary: "Current user profile + roles + setup flags"
-      x-status: planned
+      x-status: implemented
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '401': { $ref: '#/components/responses/Error401' }

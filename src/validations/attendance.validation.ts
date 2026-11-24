@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { uuidField } from './common';
 
 const biometricLogSchema = z.object({
-  student_id: z.string().uuid("Invalid student ID"),
+  student_id: uuidField("Invalid student ID"),
   timestamp: z.string().datetime({ message: "Invalid ISO8601 timestamp" })
 });
 

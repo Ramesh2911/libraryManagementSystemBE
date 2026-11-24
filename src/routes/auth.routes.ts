@@ -13,7 +13,8 @@ import {
   revokeSession,
   sendLoginOtp,
   resendLoginOtp,
-  verifyLoginOtp
+  verifyLoginOtp,
+  getMe
 } from '../controllers/auth.controller';
 import { authenticateToken } from '../middleware/auth.middleware';
 
@@ -36,6 +37,7 @@ router.post('/verify-otp', verifyLoginOtp);
 router.post('/reset-password', resetPassword);
 
 // Protected Routes (Require Authentication)
+router.get('/me', authenticateToken, getMe);
 router.post('/2fa/setup', authenticateToken, setup2FA);
 router.post('/2fa/verify', authenticateToken, verify2FASetup);
 

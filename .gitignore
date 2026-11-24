@@ -2,3 +2,5 @@ node_modules/
 dist/
 .env
 *.log
+
+backup_local_data.sql

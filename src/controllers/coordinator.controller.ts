@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { getTenantPrisma } from '../config/prisma';
+import { ok, fail } from '../utils/response';
 import { 
   createCoordinatorSchema, 
   assignCoordinatorSchema,
@@ -28,9 +29,9 @@ export const getCoordinators = async (req: Request, res: Response) => {
         updatedAt: true
       }
     });
-    res.json(coordinators);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch coordinators' });
+    return ok(res, coordinators, 'Coordinators fetched successfully');
+  } catch (error: any) {
+    return fail(res, error.message || 'Failed to fetch coordinators', 500);
   }
 };
 

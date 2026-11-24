@@ -455,3 +455,22 @@ export const verifyLoginOtp = async (req: Request, res: Response) => {
     return fail(res, 'Internal server error', 500);
   }
 };
+
+// GET /api/auth/me — current user from verified JWT
+export const getMe = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) return fail(res, 'Unauthorized', 401, 'UNAUTHORIZED');
+    return ok(res, {
+      sub: user.sub ?? user.admin_id ?? user.tenant_id,
+      tenant_id: user.tenant_id,
+      role: user.role,
+      name: user.name,
+      contact: user.contact ?? user.email,
+      isSetupComplete: user.isSetupComplete,
+      isProfileComplete: user.isProfileComplete,
+    }, 'Current user');
+  } catch {
+    return fail(res, 'Internal server error', 500);
+  }
+};
