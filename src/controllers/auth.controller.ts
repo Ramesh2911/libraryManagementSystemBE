@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { generateSecret, verify, generateURI } from 'otplib';
+import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
 import { prisma, getTenantPrisma } from '../config/prisma';
 import { redis } from '../config/redis';
@@ -248,8 +248,8 @@ export const verify2FALogin = async (req: Request, res: Response) => {
 
     if (!user || !user.twoFaSecret) return res.status(400).json({ error: '2FA not properly configured' });
 
-    const result = await verify({ token, secret: user.twoFaSecret });
-    if (!result.valid) return res.status(401).json({ error: 'Invalid 2FA token' });
+    const valid = authenticator.verify({ token, secret: user.twoFaSecret });
+    if (!valid) return res.status(401).json({ error: 'Invalid 2FA token' });
 
     const payload = { sub: decoded.sub, tenant_id: decoded.tenant_id, role: decoded.role };
     const tokens = generateTokens(payload, decoded.role === 'SUPER_ADMIN');
@@ -278,12 +278,8 @@ export const setup2FA = async (req: Request, res: Response) => {
     const userId = req.user.sub;
     const role = req.user.role;
 
-    const secret = generateSecret();
-    const otpauthUrl = generateURI({
-      issuer: 'SmartLibrary',
-      label: userId,
-      secret
-    });
+    const secret = authenticator.generateSecret();
+    const otpauthUrl = authenticator.keyuri(userId, 'SmartLibrary', secret);
     const qrCodeUrl = await QRCode.toDataURL(otpauthUrl);
 
     if (role === 'SUPER_ADMIN') {
@@ -322,8 +318,8 @@ export const verify2FASetup = async (req: Request, res: Response) => {
 
     if (!user || !user.twoFaSecret) return res.status(400).json({ error: 'No 2FA setup found' });
 
-    const result = await verify({ token, secret: user.twoFaSecret });
-    if (!result.valid) return res.status(400).json({ error: 'Invalid token' });
+    const valid = authenticator.verify({ token, secret: user.twoFaSecret });
+    if (!valid) return res.status(400).json({ error: 'Invalid token' });
 
     if (role === 'SUPER_ADMIN') {
       await prisma.superAdminUser.update({ where: { admin_id: userId }, data: { twoFaEnabled: true } });
