@@ -1,0 +1,2583 @@
+openapi: 3.0.3
+info:
+  title: SmartLibrary API
+  description: |
+    SmartLibrary Library Management System — REST API.
+
+    **Envelope:** every JSON response uses `{success, statusCode, message, data, timestamp}`.
+
+    **Security:** `Authorization: Bearer <JWT>` (from login/OTP verify/refresh).
+
+    **Vendor extension:** `x-status: implemented | planned` marks whether the operation
+    exists in the codebase today or is specified in `doc/*.md` and pending implementation.
+
+    Sources: existing `src/routes/*` (implemented) + `doc/*.md` (planned).
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: "Local dev"
+  - url: https://api.smartlibrary.app
+    description: Production
+tags:
+  - name: Health
+    description: "Service health"
+  - name: Auth
+    description: "Authentication, OTP, sessions (doc: auth_api.md)"
+  - name: Owner Setup
+    description: "6-step owner onboarding (planned — auth_api.md)"
+  - name: Student Self
+    description: "Student self-profile (planned — auth_api.md)"
+  - name: Libraries
+  - name: Floors
+  - name: Room Types
+  - name: Time Slots
+  - name: Reading Rooms
+  - name: Seats
+    description: "Seat map & allocation (doc: owner_seat_management_api_full.md)"
+  - name: Lockers
+    description: "Locker CRUD & assignment (doc: owner_coordinator_locker_management_api.md)"
+  - name: Students
+    description: "Admin-side student CRUD (existing)"
+  - name: Owner Students
+    description: "Owner student/admission/payment module (planned — owner_student_management_api.md)"
+  - name: Admissions
+  - name: Payments
+  - name: Deposits
+  - name: Attendance
+    description: "Sync, QR sessions, register (doc: owner_coordinator_attendance_api_endpoints_only.md)"
+  - name: Visitors
+  - name: Coordinators
+  - name: AI
+  - name: Admin
+    description: "Super-admin platform metrics"
+  - name: Owner Dashboard
+    description: "Dashboard, hubs, offers, notifications (planned — owner_dashboard_api.md)"
+  - name: Owner Analytics
+    description: "Consolidated analytics + export (planned — owner_analytics_api.md)"
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: "Health check"
+      security: []
+      x-status: implemented
+      responses:
+        '200':
+          description: "Service status"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  timestamp: { type: string, format: date-time }
+                  redis: { type: string, example: ready }
+
+  # ===================== AUTH (implemented) =====================
+  /api/auth/signup:
+    post:
+      tags: [Auth]
+      summary: "Owner signup (tenant registration)"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ownerName, libraryName, email, phone, password]
+              properties:
+                ownerName: { type: string }
+                libraryName: { type: string }
+                email: { type: string, format: email }
+                phone: { type: string }
+                password: { type: string, format: password }
+      responses:
+        '201':
+          description: "Signup success"
+          $ref: '#/components/responses/Envelope200'
+        '400': { $ref: '#/components/responses/Error400' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: "Tenant login (password OR firebaseIdToken)"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+                firebaseIdToken: { type: string }
+                phone: { type: string }
+      responses:
+        '200':
+          description: "Login result (may require 2FA step)"
+          $ref: '#/components/responses/Envelope200'
+        '401': { $ref: '#/components/responses/Error401' }
+  /api/auth/login/verify-2fa:
+    post:
+      tags: [Auth]
+      summary: "Complete login with TOTP 2FA code"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email: { type: string }
+                code: { type: string, example: '123456' }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '401': { $ref: '#/components/responses/Error401' }
+  /api/auth/admin/login:
+    post:
+      tags: [Auth, Admin]
+      summary: "Super-admin login"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '401': { $ref: '#/components/responses/Error401' }
+  /api/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: "Refresh access token"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '401': { $ref: '#/components/responses/Error401' }
+  /auth/refresh-token:
+    post:
+      tags: [Auth]
+      summary: "Refresh access token (doc-style path)"
+      description: "Alias of POST /api/auth/refresh — matches auth_api.md path."
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '401': { $ref: '#/components/responses/Error401' }
+  /admin/auth/login:
+    post:
+      tags: [Auth, Admin]
+      summary: "Super-admin login (doc-style path)"
+      description: "Alias of POST /api/auth/admin/login — matches auth_api.md path."
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '401': { $ref: '#/components/responses/Error401' }
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: "Logout (revoke session)"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '401': { $ref: '#/components/responses/Error401' }
+  /api/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: "Reset password"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                newPassword: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+  /api/auth/2fa/setup:
+    post:
+      tags: [Auth]
+      summary: "Start TOTP 2FA setup (returns QR / secret)"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '401': { $ref: '#/components/responses/Error401' }
+  /api/auth/2fa/verify:
+    post:
+      tags: [Auth]
+      summary: "Confirm TOTP 2FA setup"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+  /api/auth/sessions:
+    get:
+      tags: [Auth]
+      summary: "List active sessions"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '401': { $ref: '#/components/responses/Error401' }
+  /api/auth/sessions/{sessionId}:
+    delete:
+      tags: [Auth]
+      summary: "Revoke a session"
+      x-status: implemented
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+
+  # ===================== AUTH (planned — auth_api.md) =====================
+  /api/auth/send-otp:
+    post:
+      tags: [Auth]
+      summary: "Send 6-digit OTP to phone"
+      description: "Dev bypass — only `9876543210` accepted; OTP is always `123456` (Redis, 5min TTL, 30s cooldown, max 3/10min). SMS gateway comes later. Response may include `devOtp` outside production."
+      x-status: implemented
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone: { type: string, example: '9876543210' }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '429': { $ref: '#/components/responses/Error429' }
+  /api/auth/resend-otp:
+    post:
+      tags: [Auth]
+      summary: "Resend OTP (30s cooldown, max 3 / 10min)"
+      x-status: implemented
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '429': { $ref: '#/components/responses/Error429' }
+  /api/auth/verify-otp:
+    post:
+      tags: [Auth]
+      summary: "Verify OTP → issue JWT pair"
+      description: "Returns access + refresh token, `user`, and `isSetupComplete` / `isProfileComplete` flags. Owner looked up by contact = phone."
+      x-status: implemented
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, otp]
+              properties:
+                phone: { type: string, example: '9876543210' }
+                otp: { type: string, example: '123456' }
+                device: { type: string, example: 'Flutter App' }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/auth/google:
+    post:
+      tags: [Auth]
+      summary: "Sign in with Google ID token"
+      x-status: planned
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idToken]
+              properties:
+                idToken: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '401': { $ref: '#/components/responses/Error401' }
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: "Current user profile + roles + setup flags"
+      x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '401': { $ref: '#/components/responses/Error401' }
+
+  # ===================== LIBRARIES (implemented) =====================
+  /api/libraries:
+    get:
+      tags: [Libraries]
+      summary: "List libraries (hubs) for tenant"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+    post:
+      tags: [Libraries]
+      summary: "Create library hub"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                address: { type: string }
+                phone: { type: string }
+                email: { type: string }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+  /api/libraries/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [Libraries]
+      summary: "Update library"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+    delete:
+      tags: [Libraries]
+      summary: "Delete library"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+
+  # ===================== FLOORS (implemented) =====================
+  /api/floors:
+    get:
+      tags: [Floors]
+      summary: "List floors"
+      description: "Planned contract: returns `{items, total}` + `displayOrder`."
+      x-status: implemented
+      parameters:
+        - name: libraryId
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+    post:
+      tags: [Floors]
+      summary: "Create floor"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, libraryId]
+              properties:
+                name: { type: string }
+                libraryId: { type: string }
+                displayOrder: { type: integer }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+  /api/floors/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [Floors]
+      summary: "Update floor"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+    delete:
+      tags: [Floors]
+      summary: "Delete floor"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== ROOM TYPES =====================
+  /api/room-types:
+    get:
+      tags: [Room Types]
+      summary: "List room types"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+    post:
+      tags: [Room Types]
+      summary: "Create room type"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: "{ type: string }"
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+  /api/room-types/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [Room Types]
+      summary: "Update room type"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+    delete:
+      tags: [Room Types]
+      summary: "Delete room type"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== TIME SLOTS =====================
+  /api/time-slots:
+    get:
+      tags: [Time Slots]
+      summary: "List time slots"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+    post:
+      tags: [Time Slots]
+      summary: "Create time slot"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, startTime, endTime]
+              properties:
+                name: { type: string }
+                startTime: { type: string, example: '09:00' }
+                endTime: { type: string, example: '12:00' }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+  /api/time-slots/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [Time Slots]
+      summary: "Update time slot"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+    delete:
+      tags: [Time Slots]
+      summary: "Delete time slot"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== READING ROOMS =====================
+  /api/reading-rooms:
+    get:
+      tags: [Reading Rooms]
+      summary: "List reading rooms"
+      description: "Planned contract: filter `?floorId=`."
+      x-status: implemented
+      parameters:
+        - name: floorId
+          in: query
+          schema: { type: string }
+        - name: libraryId
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+    post:
+      tags: [Reading Rooms]
+      summary: "Create reading room"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, floorId]
+              properties:
+                name: { type: string }
+                floorId: { type: string }
+                roomTypeId: { type: string }
+                capacity: { type: integer }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+  /api/reading-rooms/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [Reading Rooms]
+      summary: "Update reading room"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+    delete:
+      tags: [Reading Rooms]
+      summary: "Delete reading room"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== SEATS (implemented + planned contract) =====================
+  /api/seats/map:
+    get:
+      tags: [Seats]
+      summary: "Seat map for floor/room"
+      description: |
+        Existing: `roomId`. Planned contract (owner_seat_management_api_full.md):
+        `floorId` **or** `roomId`, `status`, `includeAllocation`, `asOfDate`,
+        response `{floor, room, summary:{vacant,occupied,reserved,half_day,total}, seats[]}`.
+      x-status: implemented
+      parameters:
+        - name: roomId
+          in: query
+          schema: { type: string }
+        - name: floorId
+          in: query
+          schema: { type: string }
+          x-status: planned
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/SeatStatus' }
+          x-status: planned
+        - name: includeAllocation
+          in: query
+          schema: { type: boolean, default: false }
+          x-status: planned
+        - name: asOfDate
+          in: query
+          schema: { type: string, format: date }
+          x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+  /api/seats/{id}/allocate:
+    post:
+      tags: [Seats]
+      summary: "Allocate seat to student"
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studentId]
+              properties:
+                studentId: { type: string }
+                admissionId: { type: string }
+                feePlanId: { type: string }
+                startDate: { type: string, format: date }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /api/seats/{id}/transfer:
+    post:
+      tags: [Seats]
+      summary: "Transfer seat (atomic old-vacate + new-allocate)"
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "Current seat id"
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [newSeatId, studentId]
+              properties:
+                newSeatId: { type: string }
+                studentId: { type: string }
+                reason: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /api/seats/{id}/vacate:
+    post:
+      tags: [Seats]
+      summary: "Vacate occupied seat"
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/seats/{id}/status:
+    patch:
+      tags: [Seats]
+      summary: "Set seat status (block / maintenance / restore)"
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/SeatStatus' }
+                reason: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+  /api/seats/{id}/history:
+    get:
+      tags: [Seats]
+      summary: "Seat allocation history"
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== LOCKERS =====================
+  /api/lockers:
+    get:
+      tags: [Lockers]
+      summary: "List lockers"
+      description: "Planned contract (owner_coordinator_locker_management_api.md): `search`, `status`, pagination + `summary` + `currentAssignment`."
+      x-status: implemented
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+          x-status: planned
+        - name: status
+          in: query
+          schema: { type: string, enum: [AVAILABLE, ASSIGNED, MAINTENANCE] }
+          x-status: planned
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+          x-status: planned
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+          x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+    post:
+      tags: [Lockers]
+      summary: "Create locker"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lockerNumber]
+              properties:
+                lockerNumber: { type: string }
+                floorId: { type: string }
+                location: { type: string }
+                monthlyFee: { type: number }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+  /api/lockers/{id}/assign:
+    post:
+      tags: [Lockers]
+      summary: "Assign locker to student (atomic)"
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [student_id]
+              properties:
+                student_id: { type: string }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+  /api/lockers/{id}/release:
+    post:
+      tags: [Lockers]
+      summary: "Release assigned locker"
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/lockers/{id}/status:
+    patch:
+      tags: [Lockers]
+      summary: "Toggle AVAILABLE ↔ MAINTENANCE (ASSIGNED excluded)"
+      description: "Planned (owner_coordinator_locker_management_api.md)."
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [AVAILABLE, MAINTENANCE] }
+                reason: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /api/lockers/{id}:
+    get:
+      tags: [Lockers]
+      summary: "Locker detail (optional)"
+      description: "Doc: not required if list includes currentAssignment — add only if UI needs a detail route."
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+    patch:
+      tags: [Lockers]
+      summary: "Generic locker update (optional)"
+      description: "Doc: extend to update status if a generic PATCH already exists; otherwise use /{id}/status."
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                location: { type: string }
+                monthlyFee: { type: number }
+                status: { type: string, enum: [AVAILABLE, MAINTENANCE] }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+
+  # ===================== STUDENTS (existing admin CRUD) =====================
+  /api/students/register:
+    post:
+      tags: [Students]
+      summary: "Register student (owner/coordinator)"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone]
+              properties:
+                name: { type: string }
+                phone: { type: string }
+                email: { type: string, format: email }
+                address: { type: string }
+                nid: { type: string }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+  /api/students:
+    get:
+      tags: [Students]
+      summary: "List students"
+      x-status: implemented
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/students/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [Students]
+      summary: "Update student"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+    delete:
+      tags: [Students]
+      summary: "Soft-delete student (owner only)"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '403': { $ref: '#/components/responses/Error403' }
+
+  # ===================== ADMISSIONS =====================
+  /api/admissions:
+    post:
+      tags: [Admissions]
+      summary: "Create admission (seat + fee obligation)"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studentId, seatId, feePlanId]
+              properties:
+                studentId: { type: string }
+                seatId: { type: string }
+                feePlanId: { type: string }
+                startDate: { type: string, format: date }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /api/admissions/{id}/cancel:
+    post:
+      tags: [Admissions]
+      summary: "Cancel admission"
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+
+  # ===================== PAYMENTS =====================
+  /api/payments/record:
+    post:
+      tags: [Payments]
+      summary: "Record payment (allocates to obligations)"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studentId, amount, method]
+              properties:
+                studentId: { type: string }
+                amount: { type: number }
+                method: { type: string, enum: [CASH, BKASH, NAGAD, ROCKET, CARD, BANK] }
+                admissionId: { type: string }
+                reference: { type: string }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+  /api/payments/ledger/{studentId}:
+    get:
+      tags: [Payments]
+      summary: "Student payment ledger"
+      x-status: implemented
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== DEPOSITS =====================
+  /api/deposits:
+    post:
+      tags: [Deposits]
+      summary: "Collect security deposit"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studentId, amount]
+              properties:
+                studentId: { type: string }
+                amount: { type: number }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+  /api/deposits/{id}/refund:
+    post:
+      tags: [Deposits]
+      summary: "Refund deposit"
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+
+  # ===================== ATTENDANCE (existing) =====================
+  /api/attendance/sync:
+    post:
+      tags: [Attendance]
+      summary: "Bulk ping sync (device entry/exit logs)"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [logs]
+              properties:
+                logs:
+                  type: array
+                  items:
+                    type: object
+                    required: [student_id, timestamp]
+                    properties:
+                      student_id: { type: string }
+                      timestamp: { type: string, format: date-time }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+  /api/attendance/{studentId}:
+    get:
+      tags: [Attendance]
+      summary: "Student attendance history"
+      description: "Planned contract adds `from`, `to`, `month`, `status`, `page`, `pageSize` + pagination."
+      x-status: implemented
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+          x-status: planned
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+          x-status: planned
+        - name: month
+          in: query
+          schema: { type: string, example: '2026-11' }
+          x-status: planned
+        - name: status
+          in: query
+          schema: { type: string, enum: [PRESENT, ABSENT, LATE, HALF_DAY] }
+          x-status: planned
+        - name: page
+          in: query
+          schema: { type: integer }
+          x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== ATTENDANCE (planned — QR + register) =====================
+  /api/attendance/qr/session:
+    post:
+      tags: [Attendance]
+      summary: "Create QR session for room"
+      description: "Planned — owner/coordinator; signed QR payload valid for limited window."
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [readingRoomId]
+              properties:
+                readingRoomId: { type: string }
+                durationMinutes: { type: integer, default: 30 }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '403': { $ref: '#/components/responses/Error403' }
+    get:
+      tags: [Attendance]
+      summary: "Active QR session for room"
+      x-status: planned
+      parameters:
+        - name: readingRoomId
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/attendance/qr/session/stop:
+    post:
+      tags: [Attendance]
+      summary: "Stop active QR session"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [readingRoomId]
+              properties:
+                readingRoomId: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/attendance/qr/check-in:
+    post:
+      tags: [Attendance]
+      summary: "Student QR check-in (idempotent via deviceEventId)"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payload, deviceEventId]
+              properties:
+                payload: { type: string, description: Signed QR token }
+                deviceEventId: { type: string, format: uuid }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /api/attendance:
+    get:
+      tags: [Attendance]
+      summary: "Daily attendance register (summary + paginated rows)"
+      description: "Planned — owner tenant-wide, coordinator assigned rooms only."
+      x-status: planned
+      parameters:
+        - name: date
+          in: query
+          schema: { type: string, format: date }
+        - name: readingRoomId
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string, enum: [PRESENT, ABSENT, LATE, HALF_DAY] }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '403': { $ref: '#/components/responses/Error403' }
+  /api/attendance/report/monthly:
+    get:
+      tags: [Attendance]
+      summary: "Monthly per-student attendance report"
+      x-status: planned
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema: { type: string, example: '2026-11' }
+        - name: studentId
+          in: query
+          schema: { type: string }
+        - name: readingRoomId
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== VISITORS =====================
+  /api/visitors:
+    get:
+      tags: [Visitors]
+      summary: "List visitors + status summary"
+      description: |
+        Owner + Coordinator shared (visitor_management_api.md).
+        Summary counts are computed from the UNFILTERED set; query filters apply only to `visitors`.
+      x-status: implemented
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+          description: "Matches name, phone, or company (case-insensitive)"
+        - name: status
+          in: query
+          schema: { type: string, enum: [checked_in, checked_out] }
+          description: "Omit for All"
+        - name: from_date
+          in: query
+          schema: { type: string, format: date, example: '2026-11-01' }
+        - name: to_date
+          in: query
+          schema: { type: string, format: date, example: '2026-11-24' }
+          description: "Inclusive"
+      responses:
+        '200':
+          description: "{summary, visitors[]}"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          summary:
+                            type: object
+                            properties:
+                              total_count: { type: integer, example: 5 }
+                              checked_in_count: { type: integer, example: 2 }
+                              checked_out_count: { type: integer, example: 3 }
+                          visitors:
+                            type: array
+                            items: { $ref: '#/components/schemas/Visitor' }
+        '400': { $ref: '#/components/responses/Error400' }
+    post:
+      tags: [Visitors]
+      summary: "Create visitor (Add Visitor form)"
+      description: "Initial status defaults to `checked_in`. Owner + Coordinator shared."
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [full_name, phone_number, whatsapp_number, email, purpose, company, persons, visit_date_time]
+              properties:
+                full_name: { type: string, example: Rahul Sharma }
+                phone_number: { type: string, example: '+91 98765 43210' }
+                whatsapp_number: { type: string, example: '+91 98765 43210' }
+                email: { type: string, format: email, example: rahul.sharma@example.com }
+                purpose:
+                  type: string
+                  enum:
+                    - Study / Workspace Visit
+                    - Meeting
+                    - Enquiry
+                    - Admission Enquiry
+                    - Parent Visit
+                    - Other
+                company: { type: string, example: Self / Student }
+                persons: { type: integer, minimum: 1, example: 1 }
+                visit_date_time: { type: string, format: date-time, example: '2026-11-24T10:30:00+05:30' }
+                notes: { type: string, example: Interested in a quiet study area. }
+            example:
+              full_name: Rahul Sharma
+              phone_number: '+91 98765 43210'
+              whatsapp_number: '+91 98765 43210'
+              email: rahul.sharma@example.com
+              purpose: Study / Workspace Visit
+              company: Self / Student
+              persons: 1
+              visit_date_time: '2026-11-24T10:30:00+05:30'
+              notes: Interested in a quiet study area.
+      responses:
+        '201':
+          description: Visitor saved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Visitor' }
+        '400': { $ref: '#/components/responses/Error400' }
+  /api/visitors/{id}/status:
+    patch:
+      tags: [Visitors]
+      summary: "Update visitor status (checked_in / checked_out)"
+      description: "Single route for both check-in and check-out — do not add separate endpoints."
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [checked_in, checked_out] }
+            example:
+              status: checked_out
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id: { type: string }
+                          status: { type: string, enum: [checked_in, checked_out] }
+        '400': { $ref: '#/components/responses/Error400' }
+        '404': { $ref: '#/components/responses/Error404' }
+
+  # ===================== COORDINATORS =====================
+  /api/coordinators:
+    get:
+      tags: [Coordinators]
+      summary: "List coordinators"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+    post:
+      tags: [Coordinators]
+      summary: "Create coordinator (with optional assignments)"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone]
+              properties:
+                name: { type: string }
+                phone: { type: string }
+                email: { type: string }
+                password: { type: string }
+                assignments:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      floorId: { type: string }
+                      readingRoomId: { type: string }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+  /api/coordinators/{id}/assignments:
+    post:
+      tags: [Coordinators]
+      summary: "Assign floors/rooms to coordinator"
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+  /api/coordinators/{id}/permissions:
+    patch:
+      tags: [Coordinators]
+      summary: "Update coordinator permissions"
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/coordinators/{id}/status:
+    patch:
+      tags: [Coordinators]
+      summary: "Activate/deactivate coordinator"
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== AI =====================
+  /api/ai/query:
+    post:
+      tags: [AI]
+      summary: "Natural-language analytics query (owner only)"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question: { type: string, example: 'How many overdue students this month?' }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '403': { $ref: '#/components/responses/Error403' }
+
+  # ===================== ADMIN (super-admin) =====================
+  /api/admin/dashboard:
+    get:
+      tags: [Admin]
+      summary: "Platform metrics (owners, tenants, MRR)"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '401': { $ref: '#/components/responses/Error401' }
+  /api/admin/subscriptions:
+    get:
+      tags: [Admin]
+      summary: "List subscriptions"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/admin/owners:
+    get:
+      tags: [Admin]
+      summary: "List owner accounts"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/admin/revenue-analytics:
+    get:
+      tags: [Admin]
+      summary: "Platform revenue analytics"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== OWNER SETUP (planned — auth_api.md) =====================
+  /api/v1/owner/setup/basic-details:
+    post:
+      tags: [Owner Setup]
+      summary: "Step 1 — owner + library basic details"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ownerName, libraryName, phone]
+              properties:
+                ownerName: { type: string }
+                libraryName: { type: string }
+                phone: { type: string }
+                email: { type: string, format: email }
+                tagline: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+  /api/v1/owner/setup/location-details:
+    post:
+      tags: [Owner Setup]
+      summary: "Step 2 — address / geo"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [address, city]
+              properties:
+                address: { type: string }
+                city: { type: string }
+                area: { type: string }
+                postalCode: { type: string }
+                latitude: { type: number }
+                longitude: { type: number }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/setup/operation-timing:
+    post:
+      tags: [Owner Setup]
+      summary: "Step 3 — opening hours + time slots"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [openTime, closeTime]
+              properties:
+                openTime: { type: string, example: '08:00' }
+                closeTime: { type: string, example: '22:00' }
+                daysOpen:
+                  type: array
+                  items: { type: string, example: SUN }
+                slots:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name: { type: string }
+                      startTime: { type: string }
+                      endTime: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/setup/rooms-setup:
+    post:
+      tags: [Owner Setup]
+      summary: "Step 4 — floors + room types + reading rooms"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [floors]
+              properties:
+                floors:
+                  type: array
+                  items:
+                    type: object
+                    required: [name]
+                    properties:
+                      name: { type: string }
+                      rooms:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name: { type: string }
+                            roomTypeId: { type: string }
+                            capacity: { type: integer }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/setup/fees-deposit:
+    post:
+      tags: [Owner Setup]
+      summary: "Step 5 — fee plans + deposit config"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [feePlans]
+              properties:
+                feePlans:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name: { type: string }
+                      amount: { type: number }
+                      cycle: { type: string, enum: [MONTHLY, QUARTERLY, YEARLY] }
+                      depositAmount: { type: number }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/setup/review-summary:
+    get:
+      tags: [Owner Setup]
+      summary: "Step 6a — review everything before finalize"
+      x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/setup/finalize:
+    post:
+      tags: [Owner Setup]
+      summary: "Step 6b — commit draft (single transaction)"
+      description: "Creates Library + Floor + RoomType + TimeSlots + ReadingRoom + Seats + FeePlan atomically."
+      x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '409': { $ref: '#/components/responses/Error409' }
+
+  # ===================== STUDENT SELF (planned — auth_api.md) =====================
+  /api/student/register-profile:
+    post:
+      tags: [Student Self]
+      summary: "Student registers profile after OTP login"
+      x-status: planned
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, name]
+              properties:
+                phone: { type: string }
+                name: { type: string }
+                email: { type: string, format: email }
+                address: { type: string }
+                nid: { type: string }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /api/student/profile:
+    get:
+      tags: [Student Self]
+      summary: "Get own profile"
+      x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+    put:
+      tags: [Student Self]
+      summary: "Update own profile"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string }
+                address: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/student/preferences:
+    patch:
+      tags: [Student Self]
+      summary: "Update notification / locale preferences"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notifySms: { type: boolean }
+                notifyEmail: { type: boolean }
+                locale: { type: string, example: bn }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== OWNER STUDENTS (planned — owner_student_management_api.md) =====================
+  /api/v1/owner/students:
+    get:
+      tags: [Owner Students]
+      summary: "List students + hub-wide summary counters"
+      description: "Dual filters: studentStatus × paymentStatus × search × seat/locker flags."
+      x-status: planned
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: studentStatus
+          in: query
+          schema: { type: string, enum: [ACTIVE, CLOSED, PENDING] }
+        - name: paymentStatus
+          in: query
+          schema: { type: string, enum: [PAID, DUE, OVERDUE, PARTIAL] }
+        - name: hasSeat
+          in: query
+          schema: { type: boolean }
+        - name: floorId
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: sortBy
+          in: query
+          schema: { type: string, enum: [name, createdAt, dueDate] }
+        - name: sortOrder
+          in: query
+          schema: { type: string, enum: [asc, desc] }
+      responses:
+        '200':
+          description: "`{items, summary, pagination}`"
+          $ref: '#/components/responses/Envelope200'
+        '403': { $ref: '#/components/responses/Error403' }
+    post:
+      tags: [Owner Students]
+      summary: "Create student (OTP verified + uploads)"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone]
+              properties:
+                name: { type: string }
+                phone: { type: string, example: '9876543210' }
+                email: { type: string, format: email }
+                address: { type: string }
+                nid: { type: string }
+                photoUrl: { type: string }
+                admission:
+                  type: object
+                  properties:
+                    seatId: { type: string }
+                    feePlanId: { type: string }
+                    startDate: { type: string, format: date }
+                    depositAmount: { type: number }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /api/v1/owner/students/export:
+    get:
+      tags: [Owner Students]
+      summary: "Export student list"
+      x-status: planned
+      parameters:
+        - name: format
+          in: query
+          required: true
+          schema: { type: string, enum: [csv, xlsx, pdf] }
+      responses:
+        '200':
+          description: "File stream"
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+  /api/v1/owner/students/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Owner Students]
+      summary: "Student profile overview"
+      x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+    patch:
+      tags: [Owner Students]
+      summary: "Edit student basics"
+      x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/students/{id}/payments:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Owner Students]
+      summary: "Payments tab"
+      x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+    post:
+      tags: [Owner Students]
+      summary: "Collect fee for student"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, method]
+              properties:
+                amount: { type: number }
+                method: { type: string, enum: [CASH, BKASH, NAGAD, ROCKET, CARD, BANK] }
+                admissionId: { type: string }
+                idempotencyKey: { type: string }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /api/v1/owner/students/{id}/history:
+    get:
+      tags: [Owner Students]
+      summary: "Activity history tab"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/students/{id}/lifecycle:
+    patch:
+      tags: [Owner Students]
+      summary: "Lifecycle transition (active ↔ closed)"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [close, reopen] }
+                reason: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/students/{id}/admissions:
+    get:
+      tags: [Owner Students, Admissions]
+      summary: "Admissions tab for student"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/students/{id}/admissions/renew:
+    post:
+      tags: [Owner Students, Admissions]
+      summary: "Renew admission (new cycle + fee obligation)"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                feePlanId: { type: string }
+                startDate: { type: string, format: date }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/students/{id}/admissions/{admissionId}/close:
+    post:
+      tags: [Owner Students, Admissions]
+      summary: "Close admission (vacates seat)"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: admissionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /api/v1/owner/students/mobile-verifications:
+    post:
+      tags: [Owner Students]
+      summary: "Send OTP to student mobile"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone: { type: string, example: '9876543210' }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '429': { $ref: '#/components/responses/Error429' }
+  /api/v1/owner/students/mobile-verifications/verify:
+    post:
+      tags: [Owner Students]
+      summary: "Verify student OTP (dev: 123456)"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, otp]
+              properties:
+                phone: { type: string }
+                otp: { type: string, example: '123456' }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+  /api/v1/owner/students/mobile-verifications/{verificationId}/verify:
+    post:
+      tags: [Owner Students]
+      summary: "Verify student OTP by verification id (doc-style path)"
+      description: "Matches owner_student_management_api.md `POST /owner/students/mobile-verifications/{verificationId}/verify`."
+      x-status: planned
+      parameters:
+        - name: verificationId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [otp]
+              properties:
+                otp: { type: string, example: '123456' }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/v1/owner/students/form-config:
+    get:
+      tags: [Owner Students]
+      summary: "Student form configuration (dropdowns/rules)"
+      description: "From owner_student_management_api.md — fee plans, room types, required fields for Add Student form."
+      x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/students/search-suggestions:
+    get:
+      tags: [Owner Students]
+      summary: "Type-ahead student search suggestions"
+      x-status: planned
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/students/uploads:
+    post:
+      tags: [Owner Students]
+      summary: "Upload photo / NID document (multipart)"
+      description: "Stored under `uploads/<tenantId>/` on local disk."
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                kind:
+                  type: string
+                  enum: [photo, nid, other]
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+
+  # ===================== OWNER ADMISSIONS FLOW (planned) =====================
+  /api/v1/owner/admissions/configuration:
+    get:
+      tags: [Owner Students, Admissions]
+      summary: "Admission form configuration (fee plans, deposit rules)"
+      x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/admissions/rooms:
+    get:
+      tags: [Owner Students, Admissions]
+      summary: "Rooms for admission picker"
+      x-status: planned
+      parameters:
+        - name: floorId
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/admissions/seats:
+    get:
+      tags: [Owner Students, Admissions]
+      summary: "Vacant seats for admission picker"
+      x-status: planned
+      parameters:
+        - name: roomId
+          in: query
+          schema: { type: string }
+        - name: floorId
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/admissions/fee-quote:
+    post:
+      tags: [Owner Students, Admissions]
+      summary: "Fee quote before creating admission"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [feePlanId]
+              properties:
+                feePlanId: { type: string }
+                seatId: { type: string }
+                startDate: { type: string, format: date }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/admissions:
+    post:
+      tags: [Owner Students, Admissions]
+      summary: "Create admission (atomic seat allocate + fee obligation)"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studentId, seatId, feePlanId]
+              properties:
+                studentId: { type: string }
+                seatId: { type: string }
+                feePlanId: { type: string }
+                startDate: { type: string, format: date }
+                depositAmount: { type: number }
+                idempotencyKey: { type: string }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /api/v1/owner/admissions/{id}:
+    get:
+      tags: [Owner Students, Admissions]
+      summary: "Admission detail"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/v1/owner/admissions/{id}/payments:
+    post:
+      tags: [Owner Students, Admissions]
+      summary: "Record payment against admission"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== OWNER PAYMENTS (planned) =====================
+  /api/v1/owner/payments/{id}:
+    get:
+      tags: [Owner Students, Payments]
+      summary: "Payment detail"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/payments/{id}/confirm:
+    post:
+      tags: [Owner Students, Payments]
+      summary: "Confirm pending payment"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /api/v1/owner/payments/{id}/status:
+    post:
+      tags: [Owner Students, Payments]
+      summary: "Mark payment failed / reversed"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/payments/{id}/receipt:
+    get:
+      tags: [Owner Students, Payments]
+      summary: "Payment receipt"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== STUDENT REQUESTS (planned — new model) =====================
+  /api/v1/owner/student-requests:
+    get:
+      tags: [Owner Students]
+      summary: "List student requests (seat change, pause, etc.)"
+      x-status: planned
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [PENDING, APPROVED, REJECTED, RESOLVED] }
+        - name: category
+          in: query
+          schema: { type: string, enum: [SEAT_TRANSFER, PAUSE, REFUND, OTHER] }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/student-requests/{id}:
+    get:
+      tags: [Owner Students]
+      summary: "Request detail"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/v1/owner/student-requests/{id}/approve:
+    post:
+      tags: [Owner Students]
+      summary: "Approve request"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/student-requests/{id}/reject:
+    post:
+      tags: [Owner Students]
+      summary: "Reject request"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/student-requests/{id}/resolve:
+    post:
+      tags: [Owner Students]
+      summary: "Mark approved request resolved"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/student-requests/{id}/history:
+    get:
+      tags: [Owner Students]
+      summary: "Request status history"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== OWNER DASHBOARD (planned — owner_dashboard_api.md) =====================
+  /api/v1/owner/hubs:
+    get:
+      tags: [Owner Dashboard]
+      summary: "List hubs for switcher"
+      x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/hubs/switch:
+    put:
+      tags: [Owner Dashboard]
+      summary: "Switch active hub context"
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [hubId]
+              properties:
+                hubId: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/v1/owner/hubs/{hubId}/floors:
+    get:
+      tags: [Owner Dashboard]
+      summary: "Floors for hub (dashboard filter)"
+      x-status: planned
+      parameters:
+        - name: hubId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/hubs/{hubId}/zones:
+    get:
+      tags: [Owner Dashboard]
+      summary: "Zones for hub (dashboard filter)"
+      x-status: planned
+      parameters:
+        - name: hubId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/dashboard:
+    get:
+      tags: [Owner Dashboard]
+      summary: "Main dashboard (KPIs + seat stats + recent activity)"
+      x-status: planned
+      parameters:
+        - name: hubId
+          in: query
+          schema: { type: string }
+        - name: floorId
+          in: query
+          schema: { type: string }
+        - name: zoneId
+          in: query
+          schema: { type: string }
+        - name: date
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/dashboard/seats:
+    get:
+      tags: [Owner Dashboard]
+      summary: "Seat metrics (vacant/occupied/reserved/half_day by floor)"
+      x-status: planned
+      parameters:
+        - name: hubId
+          in: query
+          schema: { type: string }
+        - name: floorId
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/dashboard/business-overview:
+    get:
+      tags: [Owner Dashboard]
+      summary: "Business overview stats (students, revenue, dues)"
+      x-status: planned
+      parameters:
+        - name: period
+          in: query
+          schema: { type: string, enum: [today, week, this_month, last_month, custom] }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/dashboard/revenue:
+    get:
+      tags: [Owner Dashboard]
+      summary: "Revenue by period + chart buckets"
+      x-status: planned
+      parameters:
+        - name: period
+          in: query
+          schema: { type: string, enum: [today, week, this_month, last_month, custom] }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/dashboard/offers/active:
+    get:
+      tags: [Owner Dashboard]
+      summary: "Active offer banners"
+      x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/dashboard/offers/{id}/action:
+    post:
+      tags: [Owner Dashboard]
+      summary: "Dismiss / apply offer banner"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/dashboard/quick-actions:
+    get:
+      tags: [Owner Dashboard]
+      summary: "Contextual quick actions"
+      x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/notifications/unread-count:
+    get:
+      tags: [Owner Dashboard]
+      summary: "Unread notification badge count"
+      x-status: planned
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/notifications/{id}/read:
+    patch:
+      tags: [Owner Dashboard]
+      summary: "Mark notification read"
+      x-status: planned
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+
+  # ===================== OWNER ANALYTICS (planned — owner_analytics_api.md) =====================
+  /api/v1/owner/analytics:
+    get:
+      tags: [Owner Analytics]
+      summary: "Consolidated analytics payload"
+      description: |
+        One response containing: financial overview, metric cards, revenue trend,
+        seat analytics by floor, active students, daily visits, collection/overdue
+        summary (1-7 / 8-15 / 16+ buckets), and insights.
+      x-status: planned
+      parameters:
+        - name: period
+          in: query
+          schema: { type: string, enum: [today, this_week, this_month, last_month, custom], default: this_month }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: hubId
+          in: query
+          schema: { type: string }
+        - name: floorId
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '403': { $ref: '#/components/responses/Error403' }
+  /api/v1/owner/analytics/export:
+    get:
+      tags: [Owner Analytics]
+      summary: "Export analytics (xlsx / json / pdf)"
+      x-status: planned
+      parameters:
+        - name: format
+          in: query
+          required: true
+          schema: { type: string, enum: [xlsx, json, pdf] }
+        - name: period
+          in: query
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: "File stream (xlsx/pdf) or JSON"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
+            application/pdf:
+              schema: { type: string, format: binary }
+
+  # ===================== OWNER COORDINATOR PROVISIONING (planned envelope variant) =====================
+  /api/v1/owner/coordinators:
+    post:
+      tags: [Coordinators]
+      summary: "Provision coordinator (owner setup flow, envelope contract)"
+      description: "Planned alias of existing `POST /api/coordinators` under owner namespace."
+      x-status: planned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone]
+              properties:
+                name: { type: string }
+                phone: { type: string }
+                email: { type: string }
+                permissions:
+                  type: object
+                  properties:
+                    collectPayment: { type: boolean }
+                    manageSeats: { type: boolean }
+                    viewReports: { type: boolean }
+                assignments:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      floorId: { type: string }
+                      readingRoomId: { type: string }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '409': { $ref: '#/components/responses/Error409' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Envelope200:
+      description: "Success envelope"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+    Error400:
+      description: "Validation / bad request"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+    Error401:
+      description: "Unauthorized (missing/invalid token)"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+    Error403:
+      description: "Forbidden (role / tenant)"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+    Error404:
+      description: "Not found"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+    Error409:
+      description: "Conflict (duplicate)"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+    Error429:
+      description: "Rate limited"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+    Error500:
+      description: "Server error"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+  schemas:
+    Envelope:
+      type: object
+      required: [success, statusCode, message, timestamp]
+      properties:
+        success: { type: boolean, example: true }
+        statusCode: { type: integer, example: 200 }
+        message: { type: string, example: OK }
+        data: { description: Payload (shape varies per operation) }
+        timestamp: { type: string, format: date-time }
+    Pagination:
+      type: object
+      properties:
+        page: { type: integer, example: 1 }
+        pageSize: { type: integer, example: 20 }
+        total: { type: integer, example: 137 }
+        totalPages: { type: integer, example: 7 }
+    Visitor:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        full_name: { type: string }
+        phone_number: { type: string }
+        whatsapp_number: { type: string }
+        email: { type: string, format: email }
+        purpose: { type: string }
+        company: { type: string }
+        persons: { type: integer, minimum: 1 }
+        visit_date_time: { type: string, format: date-time, nullable: true }
+        notes: { type: string, nullable: true }
+        status: { type: string, enum: [checked_in, checked_out] }
+    SeatStatus:
+      type: string
+      enum: [vacant, occupied, reserved, half_day, blocked, maintenance]
+    LockerStatus:
+      type: string
+      enum: [AVAILABLE, ASSIGNED, MAINTENANCE]

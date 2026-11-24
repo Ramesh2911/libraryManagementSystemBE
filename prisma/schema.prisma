@@ -1,0 +1,632 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = []
+}
+
+// Super Admin Realm (Global)
+model SuperAdminUser {
+  admin_id     String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  role         String   @default("SUPER_ADMIN")
+  password     String
+  twoFaEnabled Boolean  @default(false)
+  twoFaSecret  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("super_admin_users")
+}
+
+// Tenant Root
+model Owner {
+  tenant_id          String   @id @default(uuid()) // This is the PK and tenant_id
+  name               String
+  contact            String   @unique
+  password           String
+  subscriptionPlanId String?
+  twoFaEnabled       Boolean  @default(false)
+  twoFaSecret        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  libraries              Library[]
+  floors                 Floor[]
+  roomTypes              RoomType[]
+  readingRooms           ReadingRoom[]
+  seats                  Seat[]
+  timeSlots              TimeSlot[]
+  feePlans               FeePlan[]
+  students               Student[]
+  admissions             Admission[]
+  seatAssignments        SeatAssignment[]
+  feeObligations         FeeObligation[]
+  payments               Payment[]
+  paymentAllocations     PaymentAllocation[]
+  deposits               Deposit[]
+  refunds                Refund[]
+  transactions           Transaction[]
+  expenses               Expense[]
+  coordinators           Coordinator[]
+  coordinatorAssignments CoordinatorAssignment[]
+  lockers                Locker[]
+  lockerAssignments      LockerAssignment[]
+  visitors               Visitor[]
+  overdueTracking        OverdueTracking[]
+  activityLogs           ActivityLog[]
+  notifications          NotificationLog[]
+  subscriptions          Subscription[]
+  aiQueryLogs            AiQueryLog[]
+  backups                BackupHistory[]
+  attendanceLogs         AttendanceLog[]
+
+  @@map("owners")
+}
+
+model Library {
+  library_id String   @id @default(uuid())
+  tenant_id  String
+  name       String
+  address    String?
+  logo_url   String?
+  contact    String?
+  status     String   @default("active") // active/deleted
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  owner        Owner         @relation(fields: [tenant_id], references: [tenant_id])
+  floors       Floor[]
+  readingRooms ReadingRoom[]
+  timeSlots    TimeSlot[]
+  feePlans     FeePlan[]
+
+  @@map("libraries")
+}
+
+model Floor {
+  floor_id   String   @id @default(uuid())
+  tenant_id  String
+  library_id String
+  name       String
+  status     String   @default("active")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  owner        Owner         @relation(fields: [tenant_id], references: [tenant_id])
+  library      Library       @relation(fields: [library_id], references: [library_id])
+  readingRooms ReadingRoom[]
+
+  @@map("floors")
+}
+
+model RoomType {
+  room_type_id String   @id @default(uuid())
+  tenant_id    String
+  name         String
+  description  String?
+  status       String   @default("active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  owner        Owner         @relation(fields: [tenant_id], references: [tenant_id])
+  readingRooms ReadingRoom[]
+
+  @@map("room_types")
+}
+
+model ReadingRoom {
+  room_id        String   @id @default(uuid())
+  tenant_id      String
+  library_id     String
+  floor_id       String?
+  room_type_id   String?
+  type           String // legacy field
+  name           String?
+  is_silent_zone Boolean  @default(false)
+  capacity       Int
+  status         String   @default("active") // active/deleted
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  owner                  Owner                   @relation(fields: [tenant_id], references: [tenant_id])
+  library                Library                 @relation(fields: [library_id], references: [library_id])
+  floor                  Floor?                  @relation(fields: [floor_id], references: [floor_id])
+  roomType               RoomType?               @relation(fields: [room_type_id], references: [room_type_id])
+  seats                  Seat[]
+  coordinatorAssignments CoordinatorAssignment[]
+
+  @@map("reading_rooms")
+}
+
+model Seat {
+  seat_id     String   @id @default(uuid())
+  tenant_id   String
+  room_id     String
+  seat_number String
+  status      String   @default("ACTIVE") // ACTIVE / INACTIVE / MAINTENANCE
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner       Owner            @relation(fields: [tenant_id], references: [tenant_id])
+  room        ReadingRoom      @relation(fields: [room_id], references: [room_id])
+  assignments SeatAssignment[]
+
+  @@unique([room_id, seat_number])
+  @@map("seats")
+}
+
+model TimeSlot {
+  slot_id    String   @id @default(uuid())
+  tenant_id  String
+  library_id String
+  name       String // e.g., "Morning Shift", "Full Day"
+  start_time String // "08:00"
+  end_time   String // "14:00"
+  status     String   @default("active")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  owner           Owner            @relation(fields: [tenant_id], references: [tenant_id])
+  library         Library          @relation(fields: [library_id], references: [library_id])
+  seatAssignments SeatAssignment[]
+
+  @@map("time_slots")
+}
+
+model Student {
+  student_id        String   @id @default(uuid())
+  tenant_id         String
+  name              String
+  photo_url         String?
+  aadhaar_ref       String? // Encrypted reference
+  mobile            String
+  parent_mobile     String?
+  address           String?
+  college           String?
+  emergency_contact String?
+  status            String   @default("active") // active/cancelled
+  password          String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  owner           Owner              @relation(fields: [tenant_id], references: [tenant_id])
+  admissions      Admission[]
+  seatAssignments SeatAssignment[]
+  feeObligations  FeeObligation[]
+  payments        Payment[]
+  deposits        Deposit[]
+  refunds         Refund[]
+  lockers         LockerAssignment[]
+  overdueTracking OverdueTracking[]
+  attendanceLogs  AttendanceLog[]
+
+  @@map("students")
+}
+
+model FeePlan {
+  plan_id        String    @id @default(uuid())
+  tenant_id      String
+  library_id     String
+  name           String
+  billing_period String // MONTHLY, QUARTERLY, HALF_YEARLY, YEARLY, CUSTOM
+  amount         Float
+  admission_fee  Float     @default(0)
+  status         String    @default("active")
+  effective_from DateTime?
+  effective_to   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  owner      Owner       @relation(fields: [tenant_id], references: [tenant_id])
+  library    Library     @relation(fields: [library_id], references: [library_id])
+  admissions Admission[]
+
+  @@map("fee_plans")
+}
+
+model Admission {
+  admission_id        String   @id @default(uuid())
+  tenant_id           String
+  student_id          String
+  plan_id             String
+  start_date          DateTime
+  end_date            DateTime
+  fee_snapshot        Float
+  status              String   @default("ACTIVE") // DRAFT, PENDING_PAYMENT, ACTIVE, EXPIRING, EXPIRED, CANCELLED, COMPLETED
+  cancellation_reason String?
+  created_by          String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  owner           Owner            @relation(fields: [tenant_id], references: [tenant_id])
+  student         Student          @relation(fields: [student_id], references: [student_id])
+  feePlan         FeePlan          @relation(fields: [plan_id], references: [plan_id])
+  seatAssignments SeatAssignment[]
+  feeObligations  FeeObligation[]
+  payments        Payment[]
+  deposits        Deposit[]
+
+  @@map("admissions")
+}
+
+model SeatAssignment {
+  assignment_id String    @id @default(uuid())
+  tenant_id     String
+  admission_id  String
+  student_id    String
+  seat_id       String
+  slot_id       String?
+  start_at      DateTime
+  end_at        DateTime?
+  status        String    @default("ACTIVE") // ACTIVE, TRANSFERRED, CLOSED
+  assigned_by   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  owner     Owner     @relation(fields: [tenant_id], references: [tenant_id])
+  admission Admission @relation(fields: [admission_id], references: [admission_id])
+  student   Student   @relation(fields: [student_id], references: [student_id])
+  seat      Seat      @relation(fields: [seat_id], references: [seat_id])
+  timeSlot  TimeSlot? @relation(fields: [slot_id], references: [slot_id])
+
+  @@map("seat_assignments")
+}
+
+model FeeObligation {
+  obligation_id  String   @id @default(uuid())
+  tenant_id      String
+  admission_id   String
+  student_id     String
+  billing_period String // e.g., "2023-09"
+  due_date       DateTime
+  amount_due     Float
+  amount_paid    Float    @default(0)
+  status         String   @default("UPCOMING") // UPCOMING, DUE, PARTIALLY_PAID, PAID, OVERDUE, WAIVED, CANCELLED
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  owner       Owner               @relation(fields: [tenant_id], references: [tenant_id])
+  admission   Admission           @relation(fields: [admission_id], references: [admission_id])
+  student     Student             @relation(fields: [student_id], references: [student_id])
+  allocations PaymentAllocation[]
+
+  @@unique([admission_id, billing_period])
+  @@map("fee_obligations")
+}
+
+model Payment {
+  payment_id          String   @id @default(uuid())
+  tenant_id           String
+  student_id          String
+  admission_id        String?
+  amount              Float
+  currency            String   @default("INR")
+  method              String // CASH, UPI, ONLINE_GATEWAY, BANK_TRANSFER
+  provider            String? // e.g., CASHFREE
+  provider_payment_id String?
+  status              String   @default("PENDING") // INITIATED, PENDING, SUCCESS, FAILED, CANCELLED, REFUNDED
+  idempotency_key     String?  @unique
+  receipt_url         String?
+  created_by          String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  owner       Owner               @relation(fields: [tenant_id], references: [tenant_id])
+  student     Student             @relation(fields: [student_id], references: [student_id])
+  admission   Admission?          @relation(fields: [admission_id], references: [admission_id])
+  allocations PaymentAllocation[]
+
+  @@map("payments")
+}
+
+model PaymentAllocation {
+  allocation_id String   @id @default(uuid())
+  tenant_id     String
+  payment_id    String
+  obligation_id String?
+  deposit_id    String?
+  amount        Float
+  createdAt     DateTime @default(now())
+
+  owner      Owner          @relation(fields: [tenant_id], references: [tenant_id])
+  payment    Payment        @relation(fields: [payment_id], references: [payment_id])
+  obligation FeeObligation? @relation(fields: [obligation_id], references: [obligation_id])
+  deposit    Deposit?       @relation(fields: [deposit_id], references: [deposit_id])
+
+  @@map("payment_allocations")
+}
+
+model Deposit {
+  deposit_id         String    @id @default(uuid())
+  tenant_id          String
+  student_id         String
+  admission_id       String?
+  library_id         String
+  amount             Float
+  deposit_type       String    @default("REFUNDABLE") // REFUNDABLE, NON_REFUNDABLE
+  status             String    @default("HELD") // HELD, REFUND_PENDING, REFUNDED, FORFEITED, DEDUCTED
+  refunded_amount    Float     @default(0)
+  collected_at       DateTime  @default(now())
+  eligible_refund_at DateTime?
+  created_by         String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  owner       Owner               @relation(fields: [tenant_id], references: [tenant_id])
+  student     Student             @relation(fields: [student_id], references: [student_id])
+  admission   Admission?          @relation(fields: [admission_id], references: [admission_id])
+  allocations PaymentAllocation[]
+  refunds     Refund[]
+
+  @@map("deposits")
+}
+
+model Refund {
+  refund_id  String   @id @default(uuid())
+  tenant_id  String
+  deposit_id String
+  student_id String
+  amount     Float
+  reason     String?
+  status     String   @default("COMPLETED")
+  created_by String?
+  createdAt  DateTime @default(now())
+
+  owner   Owner   @relation(fields: [tenant_id], references: [tenant_id])
+  deposit Deposit @relation(fields: [deposit_id], references: [deposit_id])
+  student Student @relation(fields: [student_id], references: [student_id])
+
+  @@map("refunds")
+}
+
+model Transaction {
+  transaction_id   String   @id @default(uuid())
+  tenant_id        String
+  library_id       String
+  type             String // INCOME, EXPENSE, REFUND, ADJUSTMENT
+  category         String // ADMISSION_FEE, RECURRING_FEE, DEPOSIT, RENT, ELECTRICITY, etc.
+  amount           Float
+  transaction_date DateTime @default(now())
+  reference_id     String? // Payment ID, Expense ID, Refund ID
+  description      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  owner Owner @relation(fields: [tenant_id], references: [tenant_id])
+
+  @@map("transactions")
+}
+
+model Expense {
+  expense_id       String   @id @default(uuid())
+  tenant_id        String
+  library_id       String
+  category         String
+  amount           Float
+  transaction_date DateTime
+  payment_method   String
+  description      String?
+  receipt_file_id  String?
+  status           String   @default("POSTED") // DRAFT, SUBMITTED, APPROVED, POSTED
+  created_by       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  owner Owner @relation(fields: [tenant_id], references: [tenant_id])
+
+  @@map("expenses")
+}
+
+model Coordinator {
+  coordinator_id String   @id @default(uuid())
+  tenant_id      String
+  name           String
+  mobile         String
+  password       String
+  permissions    Json     @default("{}") // Structured owner-editable object
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  owner       Owner                   @relation(fields: [tenant_id], references: [tenant_id])
+  assignments CoordinatorAssignment[]
+
+  @@map("coordinators")
+}
+
+model CoordinatorAssignment {
+  assignment_id  String    @id @default(uuid())
+  tenant_id      String
+  coordinator_id String
+  library_id     String?
+  floor_id       String?
+  room_id        String?
+  start_at       DateTime
+  end_at         DateTime?
+  status         String    @default("ACTIVE") // ACTIVE, CLOSED
+  assigned_by    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  owner       Owner        @relation(fields: [tenant_id], references: [tenant_id])
+  coordinator Coordinator  @relation(fields: [coordinator_id], references: [coordinator_id])
+  room        ReadingRoom? @relation(fields: [room_id], references: [room_id])
+
+  @@map("coordinator_assignments")
+}
+
+model Locker {
+  locker_id     String   @id @default(uuid())
+  tenant_id     String
+  library_id    String
+  locker_number String
+  status        String   @default("AVAILABLE") // AVAILABLE, ASSIGNED, MAINTENANCE, INACTIVE
+  fee           Float?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  owner       Owner              @relation(fields: [tenant_id], references: [tenant_id])
+  assignments LockerAssignment[]
+
+  @@unique([library_id, locker_number])
+  @@map("lockers")
+}
+
+model LockerAssignment {
+  assignment_id String    @id @default(uuid())
+  tenant_id     String
+  locker_id     String
+  student_id    String
+  start_at      DateTime
+  end_at        DateTime?
+  status        String    @default("ACTIVE") // ACTIVE, RELEASED
+  amount_due    Float     @default(0)
+  amount_paid   Float     @default(0)
+  assigned_by   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  owner   Owner   @relation(fields: [tenant_id], references: [tenant_id])
+  locker  Locker  @relation(fields: [locker_id], references: [locker_id])
+  student Student @relation(fields: [student_id], references: [student_id])
+
+  @@map("locker_assignments")
+}
+
+model Visitor {
+  visitor_id       String    @id @default(uuid())
+  tenant_id        String
+  library_id       String
+  name             String
+  phone            String
+  whatsapp_number  String?
+  email            String?
+  company          String?
+  purpose          String?
+  number_of_people Int       @default(1)
+  scheduled_at     DateTime?
+  notes            String?
+  checked_in_at    DateTime?
+  checked_out_at   DateTime?
+  status           String    @default("SCHEDULED") // SCHEDULED, CHECKED_IN, CHECKED_OUT, CANCELLED
+  created_by       String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  owner Owner @relation(fields: [tenant_id], references: [tenant_id])
+
+  @@map("visitors")
+}
+
+model OverdueTracking {
+  overdue_id      String   @id @default(uuid())
+  tenant_id       String
+  student_id      String
+  fee_snapshot_id String
+  overdue_days    Int      @default(0)
+  recovery_status String   @default("pending")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  owner   Owner   @relation(fields: [tenant_id], references: [tenant_id])
+  student Student @relation(fields: [student_id], references: [student_id])
+
+  @@map("overdue_tracking")
+}
+
+model ActivityLog {
+  log_id          String   @id @default(uuid())
+  tenant_id       String
+  actor_id        String
+  role            String
+  device          String?
+  action          String
+  reading_room_id String?
+  timestamp       DateTime @default(now())
+
+  owner Owner @relation(fields: [tenant_id], references: [tenant_id])
+
+  @@map("activity_logs")
+}
+
+model NotificationLog {
+  log_id          String   @id @default(uuid())
+  tenant_id       String
+  channel         String
+  template_id     String?
+  trigger_event   String
+  recipient_ref   String
+  delivery_status String   @default("pending")
+  createdAt       DateTime @default(now())
+
+  owner Owner @relation(fields: [tenant_id], references: [tenant_id])
+
+  @@map("notifications_log")
+}
+
+model Subscription {
+  subscription_id String   @id @default(uuid())
+  tenant_id       String
+  plan            String   @default("trial") // trial/basic/premium/enterprise
+  status          String   @default("active")
+  renewal_date    DateTime
+  billing_ref     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  owner Owner @relation(fields: [tenant_id], references: [tenant_id])
+
+  @@map("subscriptions")
+}
+
+model AiQueryLog {
+  query_id         String   @id @default(uuid())
+  tenant_id        String
+  actor_id         String
+  query_text       String
+  context_summary  Json?
+  response_summary String?
+  timestamp        DateTime @default(now())
+
+  owner Owner @relation(fields: [tenant_id], references: [tenant_id])
+
+  @@map("ai_query_logs")
+}
+
+model BackupHistory {
+  backup_id    String    @id @default(uuid())
+  tenant_id    String? // Nullable = platform-wide
+  status       String    @default("completed")
+  initiated_by String
+  restored_at  DateTime?
+  createdAt    DateTime  @default(now())
+
+  owner Owner? @relation(fields: [tenant_id], references: [tenant_id])
+
+  @@map("backup_history")
+}
+
+model AttendanceLog {
+  log_id     String    @id @default(uuid())
+  tenant_id  String
+  student_id String
+  date       DateTime  @db.Date
+  entry_time DateTime
+  exit_time  DateTime?
+  status     String    @default("present") // present/absent
+  createdAt  DateTime  @default(now())
+
+  owner   Owner   @relation(fields: [tenant_id], references: [tenant_id])
+  student Student @relation(fields: [student_id], references: [student_id])
+
+  @@map("attendance_logs")
+}

@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: smartlibrary-postgres
+    ports:
+      - "5896:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: lOT2mzVX2DBDNajMbKq2xoB466Ic3hZprMYbSzs9DVsMNfapHqQft4LCNjTO1sMP
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: smartlibrary-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redisdata:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
