@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { prisma } from '../config/prisma';
+import { ModuleName } from '../config/modules';
 
 declare global {
   namespace Express {
@@ -40,5 +42,42 @@ export const requireRole = (roles: string[]) => {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
     next();
+  };
+};
+
+// Module-level permission gate for coordinators.
+// OWNER / SUPER_ADMIN always pass; COORDINATOR must have permissions[module] === true.
+// Permissions are read fresh from DB so owner changes apply without re-login.
+export const requireModule = (module: ModuleName) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = req.user;
+      if (!user) return res.status(401).json({ error: 'Access token missing' });
+
+      if (user.role === 'OWNER' || user.role === 'SUPER_ADMIN') return next();
+
+      if (user.role !== 'COORDINATOR') {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+
+      const coord = await prisma.coordinator.findUnique({
+        where: { coordinator_id: user.sub },
+        select: { permissions: true, status: true },
+      });
+
+      if (!coord || coord.status !== 'active') {
+        return res.status(403).json({ error: 'Coordinator inactive or not found' });
+      }
+
+      const perms = (coord.permissions ?? {}) as Record<string, boolean>;
+      if (perms[module] !== true) {
+        return res.status(403).json({ error: `Missing module permission: ${module}` });
+      }
+
+      next();
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Permission check failed' });
+    }
   };
 };

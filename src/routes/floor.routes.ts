@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { getFloors, createFloor, updateFloor, deleteFloor } from '../controllers/floor.controller';
-import { authenticateToken, requireRole } from '../middleware/auth.middleware';
+import { authenticateToken, requireRole, requireModule } from '../middleware/auth.middleware';
 
 const router = Router();
 
 router.use(authenticateToken);
 router.use(requireRole(['OWNER', 'COORDINATOR']));
+router.use(requireModule('setup'));
 
 router.get('/', getFloors);
 router.post('/', createFloor);

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { getTenantPrisma } from '../config/prisma';
+import { verifyOtp } from '../services/otp.service';
 import { createStudentSchema, updateStudentSchema } from '../validations/student.validation';
 
 export const registerStudent = async (req: Request, res: Response) => {
@@ -9,6 +10,13 @@ export const registerStudent = async (req: Request, res: Response) => {
     const prismaTenant = getTenantPrisma(tenantId);
     
     const validatedData = createStudentSchema.parse(req.body);
+
+    // Phone must be OTP-verified at account creation (OTP sent to student's phone)
+    const otpCheck = await verifyOtp(validatedData.mobile, validatedData.otp);
+    if (!otpCheck.ok) {
+      const status = otpCheck.code === 'OTP_EXPIRED' ? 400 : 401;
+      return res.status(status).json({ error: otpCheck.message, code: otpCheck.code });
+    }
 
     // Check if mobile already exists for this tenant
     const existingStudent = await prismaTenant.student.findFirst({

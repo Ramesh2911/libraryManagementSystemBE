@@ -13,7 +13,7 @@ datasource db {
 model SuperAdminUser {
   admin_id     String   @id @default(uuid())
   name         String
-  email        String   @unique
+  phone        String   @unique
   role         String   @default("SUPER_ADMIN")
   password     String
   twoFaEnabled Boolean  @default(false)

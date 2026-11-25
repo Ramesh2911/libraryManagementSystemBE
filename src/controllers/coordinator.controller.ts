@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { getTenantPrisma } from '../config/prisma';
+import { verifyOtp } from '../services/otp.service';
 import { ok, fail } from '../utils/response';
 import { 
   createCoordinatorSchema, 
@@ -42,7 +43,14 @@ export const createCoordinator = async (req: Request, res: Response) => {
     const prismaTenant = getTenantPrisma(tenantId);
     
     const data = createCoordinatorSchema.parse(req.body);
-    
+
+    // Phone must be OTP-verified at account creation (OTP sent to coordinator's phone)
+    const otpCheck = await verifyOtp(data.mobile, data.otp);
+    if (!otpCheck.ok) {
+      const status = otpCheck.code === 'OTP_EXPIRED' ? 400 : 401;
+      return res.status(status).json({ error: otpCheck.message, code: otpCheck.code });
+    }
+
     const existing = await prismaTenant.coordinator.findFirst({
       where: { mobile: data.mobile }
     });

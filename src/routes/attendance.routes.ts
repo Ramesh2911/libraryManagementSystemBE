@@ -3,14 +3,14 @@ import {
   syncAttendance, 
   getStudentAttendance 
 } from '../controllers/attendance.controller';
-import { authenticateToken, requireRole } from '../middleware/auth.middleware';
+import { authenticateToken, requireRole, requireModule } from '../middleware/auth.middleware';
 
 const router = Router();
 
 router.use(authenticateToken);
 
 // The sync endpoint is generally called by a Webhook or Biometric sync daemon running on a coordinator PC
-router.post('/sync', requireRole(['OWNER', 'COORDINATOR']), syncAttendance);
-router.get('/:studentId', requireRole(['OWNER', 'COORDINATOR']), getStudentAttendance);
+router.post('/sync', requireRole(['OWNER', 'COORDINATOR']), requireModule('attendance'), syncAttendance);
+router.get('/:studentId', requireRole(['OWNER', 'COORDINATOR']), requireModule('attendance'), getStudentAttendance);
 
 export default router;

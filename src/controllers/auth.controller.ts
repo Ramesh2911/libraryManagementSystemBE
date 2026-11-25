@@ -106,7 +106,7 @@ export const tenantLogin = async (req: Request, res: Response) => {
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch && password !== user.password) {
+    if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -133,7 +133,14 @@ export const tenantLogin = async (req: Request, res: Response) => {
       }
     });
 
-    res.json({ message: 'Login successful', ...tokens });
+    // Coordinator: include module permissions so the app can gate UI immediately
+    const permissions = role === 'COORDINATOR' ? ((user as any).permissions ?? {}) : undefined;
+    res.json({
+      message: 'Login successful',
+      ...tokens,
+      ...(permissions !== undefined ? { permissions } : {}),
+      user: { sub: userId, tenant_id: tenantId, role, ...(permissions !== undefined ? { permissions } : {}) },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -340,13 +347,16 @@ export const logout = async (req: Request, res: Response) => {
 
 export const superAdminLogin = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { phone, password } = req.body;
+    if (!phone || !password) {
+      return res.status(400).json({ error: 'phone and password are required' });
+    }
 
-    const admin = await prisma.superAdminUser.findUnique({ where: { email } });
+    const admin = await prisma.superAdminUser.findUnique({ where: { phone: String(phone) } });
     if (!admin) return res.status(401).json({ error: 'Invalid credentials' });
 
     const isMatch = await bcrypt.compare(password, admin.password);
-    if (!isMatch && password !== admin.password) {
+    if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -365,7 +375,7 @@ export const superAdminLogin = async (req: Request, res: Response) => {
   }
 };
 
-// --- Phone + OTP Login (dev: 9876543210 / 123456) ---
+// --- Phone OTP (account creation + password reset only; login is password-based) ---
 
 export const sendLoginOtp = async (req: Request, res: Response) => {
   try {
@@ -403,72 +413,31 @@ export const resendLoginOtp = async (req: Request, res: Response) => {
   }
 };
 
-export const verifyLoginOtp = async (req: Request, res: Response) => {
-  try {
-    const { phone, otp, device } = req.body;
-    if (!phone || !otp) {
-      return fail(res, 'phone and otp are required', 400, 'VALIDATION_FAILED');
-    }
-
-    const check = await verifyOtp(String(phone), String(otp));
-    if (!check.ok) {
-      const status = check.code === 'OTP_EXPIRED' ? 400 : 401;
-      return fail(res, check.message, status, check.code);
-    }
-
-    // Owner lookup by contact = phone
-    const owner = await prisma.owner.findUnique({ where: { contact: String(phone) } });
-    if (!owner) {
-      return fail(res, 'Owner not found for this phone number', 404, 'OWNER_NOT_FOUND');
-    }
-
-    const payload = { sub: owner.tenant_id, tenant_id: owner.tenant_id, role: 'OWNER' };
-    const tokens = generateTokens(payload, false);
-
-    await storeSession(owner.tenant_id, tokens.refreshToken, device || 'OTP Device', req.ip || 'Unknown IP');
-
-    await getTenantPrisma(owner.tenant_id).activityLog.create({
-      data: {
-        tenant_id: owner.tenant_id,
-        actor_id: owner.tenant_id,
-        role: 'OWNER',
-        action: 'login',
-        device: device || 'OTP Device',
-      },
-    });
-
-    const libraryCount = await prisma.library.count({ where: { tenant_id: owner.tenant_id } });
-
-    return ok(res, {
-      ...tokens,
-      user: {
-        tenant_id: owner.tenant_id,
-        name: owner.name,
-        contact: owner.contact,
-        role: 'OWNER',
-      },
-      isSetupComplete: libraryCount > 0,
-      isProfileComplete: true,
-    }, 'Login successful');
-  } catch (err) {
-    console.error(err);
-    return fail(res, 'Internal server error', 500);
-  }
-};
-
 // GET /api/auth/me - current user from verified JWT
 export const getMe = async (req: Request, res: Response) => {
   try {
     const user = req.user;
     if (!user) return fail(res, 'Unauthorized', 401, 'UNAUTHORIZED');
+
+    // Coordinator: load current module permissions (owner may have changed them since login)
+    let permissions: Record<string, boolean> | undefined;
+    if (user.role === 'COORDINATOR' && user.sub) {
+      const coord = await prisma.coordinator.findUnique({
+        where: { coordinator_id: user.sub },
+        select: { permissions: true },
+      });
+      permissions = (coord?.permissions as Record<string, boolean>) ?? {};
+    }
+
     return ok(res, {
       sub: user.sub ?? user.admin_id ?? user.tenant_id,
       tenant_id: user.tenant_id,
       role: user.role,
       name: user.name,
-      contact: user.contact ?? user.email,
+      contact: user.contact ?? user.phone,
       isSetupComplete: user.isSetupComplete,
       isProfileComplete: user.isProfileComplete,
+      ...(permissions !== undefined ? { permissions } : {}),
     }, 'Current user');
   } catch {
     return fail(res, 'Internal server error', 500);

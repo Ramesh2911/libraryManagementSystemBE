@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { getTimeSlots, createTimeSlot, updateTimeSlot, deleteTimeSlot } from '../controllers/timeSlot.controller';
-import { authenticateToken, requireRole } from '../middleware/auth.middleware';
+import { authenticateToken, requireRole, requireModule } from '../middleware/auth.middleware';
 
 const router = Router();
 
 router.use(authenticateToken);
 router.use(requireRole(['OWNER', 'COORDINATOR']));
+router.use(requireModule('setup'));
 
 router.get('/', getTimeSlots);
 router.post('/', createTimeSlot);

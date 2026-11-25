@@ -7,7 +7,7 @@ import {
   vacateSeat, 
   getSeatHistory 
 } from '../controllers/seat.controller';
-import { authenticateToken, requireRole } from '../middleware/auth.middleware';
+import { authenticateToken, requireRole, requireModule } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -17,6 +17,7 @@ router.use(authenticateToken);
 router.get('/map', getSeatMap);
 
 router.use(requireRole(['OWNER', 'COORDINATOR']));
+router.use(requireModule('seats'));
 
 router.post('/:id/allocate', allocateSeat);
 router.post('/:id/transfer', transferSeat);

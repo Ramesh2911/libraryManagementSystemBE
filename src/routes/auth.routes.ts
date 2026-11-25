@@ -13,7 +13,6 @@ import {
   revokeSession,
   sendLoginOtp,
   resendLoginOtp,
-  verifyLoginOtp,
   getMe
 } from '../controllers/auth.controller';
 import { authenticateToken } from '../middleware/auth.middleware';
@@ -22,16 +21,15 @@ const router = Router();
 
 // Public Routes
 router.post('/signup', signup);
-router.post('/login', tenantLogin); // password login (OTP login: /send-otp + /verify-otp)
+router.post('/login', tenantLogin); // phone + password (all tenant roles)
 router.post('/login/verify-2fa', verify2FALogin);
-router.post('/admin/login', superAdminLogin);
+router.post('/admin/login', superAdminLogin); // web admin: phone + password (no OTP)
 router.post('/refresh', refreshToken);
 router.post('/logout', logout);
 
-// Phone + OTP login (dev: 9876543210 / 123456)
+// Phone OTP (account creation + password reset only; NOT for login)
 router.post('/send-otp', sendLoginOtp);
 router.post('/resend-otp', resendLoginOtp);
-router.post('/verify-otp', verifyLoginOtp);
 
 // Forgot / Reset Password (phone OTP verifies identity, then user provides new password)
 router.post('/reset-password', resetPassword);

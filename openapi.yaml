@@ -105,7 +105,7 @@ paths:
   /api/v1/auth/login:
     post:
       tags: [Auth]
-      summary: "Tenant login (password; OTP: /send-otp + /verify-otp)"
+      summary: "Tenant login (phone + password for OWNER / COORDINATOR / STUDENT)"
       x-status: implemented
       requestBody:
         required: true
@@ -121,7 +121,7 @@ paths:
                 device: { type: string }
       responses:
         '200':
-          description: "Login result (may require 2FA step)"
+          description: "Login result (may require 2FA step). COORDINATOR responses include `permissions` (module map) and `user` object."
           $ref: '#/components/responses/Envelope200'
         '401': { $ref: '#/components/responses/Error401' }
   /api/v1/auth/login/verify-2fa:
@@ -145,7 +145,7 @@ paths:
   /api/v1/auth/admin/login:
     post:
       tags: [Auth, Admin]
-      summary: "Super-admin login"
+      summary: "Web admin login (phone + password, no OTP)"
       x-status: implemented
       requestBody:
         required: true
@@ -153,9 +153,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, password]
+              required: [phone, password]
               properties:
-                email: { type: string, format: email }
+                phone: { type: string, example: "9000000001" }
                 password: { type: string, format: password }
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
@@ -207,9 +207,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, password]
+              required: [phone, password]
               properties:
-                email: { type: string, format: email }
+                phone: { type: string }
                 password: { type: string, format: password }
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
@@ -294,7 +294,7 @@ paths:
     post:
       tags: [Auth]
       summary: "Send 6-digit OTP to phone"
-      description: "Dev bypass - only `9876543210` accepted; OTP is always `123456` (Redis, 5min TTL, 30s cooldown, max 3/10min). SMS gateway comes later. Response may include `devOtp` outside production."
+      description: "Sends OTP for account creation and password reset (NOT for login). OTP is always `123456` in dev (Redis, 5min TTL, 30s cooldown, max 3/10min). Any 10-digit phone accepted in dev; production restricts to allowlist until SMS gateway. Response may include `devOtp` outside production."
       x-status: implemented
       security: []
       requestBody:
@@ -328,29 +328,6 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '429': { $ref: '#/components/responses/Error429' }
-  /api/v1/auth/verify-otp:
-    post:
-      tags: [Auth]
-      summary: "Verify OTP  -> ' issue JWT pair"
-      description: "Returns access + refresh token, `user`, and `isSetupComplete` / `isProfileComplete` flags. Owner looked up by contact = phone."
-      x-status: implemented
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [phone, otp]
-              properties:
-                phone: { type: string, example: '9876543210' }
-                otp: { type: string, example: '123456' }
-                device: { type: string, example: 'Flutter App' }
-      responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
-        '400': { $ref: '#/components/responses/Error400' }
-        '401': { $ref: '#/components/responses/Error401' }
-        '404': { $ref: '#/components/responses/Error404' }
   /api/v1/auth/google:
     post:
       tags: [Auth]
@@ -373,6 +350,7 @@ paths:
     get:
       tags: [Auth]
       summary: "Current user profile + roles + setup flags"
+      description: "Returns JWT claims. For COORDINATOR, also returns current `permissions` (loaded fresh from DB)."
       x-status: implemented
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
@@ -892,7 +870,7 @@ paths:
   /api/v1/students/register:
     post:
       tags: [Students]
-      summary: "Register student (owner/coordinator)"
+      summary: "Register student (owner/coordinator; phone OTP verified at creation)"
       x-status: implemented
       requestBody:
         required: true
@@ -900,16 +878,20 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, phone]
+              required: [name, mobile, otp, password]
               properties:
                 name: { type: string }
-                phone: { type: string }
-                email: { type: string, format: email }
+                mobile: { type: string, description: "10-digit phone" }
+                otp: { type: string, description: "OTP sent to this phone via POST /auth/send-otp" }
+                password: { type: string, format: password }
+                parent_mobile: { type: string }
                 address: { type: string }
-                nid: { type: string }
+                college: { type: string }
+                emergency_contact: { type: string }
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
   /api/v1/students:
     get:
       tags: [Students]
@@ -1367,7 +1349,8 @@ paths:
         '200': { $ref: '#/components/responses/Envelope200' }
     post:
       tags: [Coordinators]
-      summary: "Create coordinator (with optional assignments)"
+      summary: "Create coordinator (owner only; phone OTP verified at creation)"
+      description: "Owner creates coordinator. OTP must be requested first via POST /auth/send-otp to the coordinator mobile. `permissions` is a partial boolean map over the 10 modules (default: none granted)."
       x-status: implemented
       requestBody:
         required: true
@@ -1375,21 +1358,26 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, phone]
+              required: [name, mobile, password, otp]
               properties:
                 name: { type: string }
-                phone: { type: string }
-                email: { type: string }
-                password: { type: string }
+                mobile: { type: string, description: "10-digit phone" }
+                password: { type: string, format: password }
+                otp: { type: string, description: "OTP sent to this phone via POST /auth/send-otp" }
+                permissions:
+                  $ref: '#/components/schemas/CoordinatorPermissions'
                 assignments:
                   type: array
                   items:
                     type: object
                     properties:
-                      floorId: { type: string }
-                      readingRoomId: { type: string }
+                      library_id: { type: string, format: uuid }
+                      floor_id: { type: string, format: uuid }
+                      room_id: { type: string, format: uuid }
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
   /api/v1/coordinators/{id}/assignments:
     post:
       tags: [Coordinators]
@@ -1405,15 +1393,27 @@ paths:
   /api/v1/coordinators/{id}/permissions:
     patch:
       tags: [Coordinators]
-      summary: "Update coordinator permissions"
+      summary: "Update coordinator module permissions (owner only)"
+      description: "Replaces the whole permissions object. Coordinator gains access to modules set to true immediately (no re-login needed)."
       x-status: implemented
       parameters:
         - name: id
           in: path
           required: true
           schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [permissions]
+              properties:
+                permissions:
+                  $ref: '#/components/schemas/CoordinatorPermissions'
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
   /api/v1/coordinators/{id}/status:
     patch:
       tags: [Coordinators]
@@ -2587,3 +2587,18 @@ components:
     LockerStatus:
       type: string
       enum: [AVAILABLE, ASSIGNED, MAINTENANCE]
+    CoordinatorPermissions:
+      type: object
+      description: "Partial boolean map over the 10 modules. Missing key = false (denied). Owner sets these; coordinator only acts on modules set to true."
+      additionalProperties: false
+      properties:
+        students: { type: boolean, example: true }
+        admissions: { type: boolean, example: true }
+        payments: { type: boolean, example: false }
+        deposits: { type: boolean, example: false }
+        seats: { type: boolean, example: true }
+        lockers: { type: boolean, example: false }
+        visitors: { type: boolean, example: true }
+        attendance: { type: boolean, example: true }
+        setup: { type: boolean, example: false }
+        analytics: { type: boolean, example: false }

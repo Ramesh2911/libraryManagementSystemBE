@@ -26,11 +26,12 @@ export async function sendOtp(rawPhone: string): Promise<SendOtpResult> {
     return { ok: false, message: 'Invalid phone number', code: 'INVALID_PHONE' };
   }
 
-  // Dev mode: only allowlisted phone accepted (SMS gateway later)
-  if (phone !== DEV_ALLOWED_PHONE) {
+  // Dev mode: allowlist enforced only in production (SMS gateway later).
+  // In dev, any valid 10-digit phone can receive the dev OTP (123456).
+  if (process.env.NODE_ENV === 'production' && phone !== DEV_ALLOWED_PHONE) {
     return {
       ok: false,
-      message: 'Phone not allowed for OTP login (dev allowlist: 9876543210)',
+      message: 'Phone not allowed for OTP (dev allowlist: 9876543210)',
       code: 'PHONE_NOT_ALLOWED',
     };
   }

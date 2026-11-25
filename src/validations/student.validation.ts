@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const createStudentSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters long"),
   mobile: z.string().regex(/^\d{10}$/, "Mobile must be 10 digits"),
+  otp: z.string().regex(/^\d{4,8}$/, "OTP must be 4-8 digits"), // phone verified at account creation
   parent_mobile: z.string().regex(/^\d{10}$/, "Parent Mobile must be 10 digits").optional(),
   address: z.string().optional(),
   college: z.string().optional(),
