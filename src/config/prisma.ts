@@ -14,7 +14,7 @@ export function getTenantPrisma(tenantId: string) {
       $allModels: {
         async $allOperations({ args, query }) {
           // Wrap all queries in an interactive transaction.
-          // Render free Postgres is slow/cold — raise timeout to avoid P2028.
+          // Render free Postgres is slow/cold - raise timeout to avoid P2028.
           return prisma.$transaction(
             async (tx) => {
               await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;

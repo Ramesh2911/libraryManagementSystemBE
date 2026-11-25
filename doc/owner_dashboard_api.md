@@ -1,5 +1,5 @@
 # SmartLibrary
-# Owner Dashboard – Backend API Documentation
+# Owner Dashboard - Backend API Documentation
 
 **Document Type:** Backend Developer Specification  
 **API Version:** v1  

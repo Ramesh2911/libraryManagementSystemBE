@@ -42,7 +42,7 @@ export const getVisitors = async (req: Request, res: Response) => {
 
     const q = listVisitorsQuerySchema.parse(req.query);
 
-    // Sequential (not Promise.all) — each op opens its own tx; parallel txs exhaust Render free pool
+    // Sequential (not Promise.all) - each op opens its own tx; parallel txs exhaust Render free pool
     const total_count = await prisma.visitor.count();
     const checked_in_count = await prisma.visitor.count({ where: { status: 'CHECKED_IN' } });
     const checked_out_count = await prisma.visitor.count({ where: { status: 'CHECKED_OUT' } });
@@ -88,7 +88,7 @@ export const createVisitor = async (req: Request, res: Response) => {
     const prisma = getTenantPrisma(tenantId);
     const data = createVisitorSchema.parse(req.body);
 
-    // library_id not in doc form — use tenant's first library
+    // library_id not in doc form - use tenant's first library
     const library = await prisma.library.findFirst({
       where: { tenant_id: tenantId },
       orderBy: { createdAt: 'asc' },

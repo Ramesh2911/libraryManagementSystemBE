@@ -57,7 +57,7 @@ export async function sendOtp(rawPhone: string): Promise<SendOtpResult> {
     };
   }
 
-  // Dev OTP: always 123456 — no SMS sent
+  // Dev OTP: always 123456 - no SMS sent
   await redis.set(otpKey(phone), DEV_OTP, 'EX', OTP_TTL_SECONDS);
   await redis.set(cooldownKey(phone), '1', 'EX', RESEND_COOLDOWN_SECONDS);
 

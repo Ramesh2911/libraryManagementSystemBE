@@ -1,7 +1,7 @@
-# SmartLibrary — Owner Analytics API Documentation
+# SmartLibrary - Owner Analytics API Documentation
 
 **Version:** 1.0  
-**Module:** Owner → Analytics  
+**Module:** Owner -> Analytics  
 **Audience:** Backend developers, Flutter developers, QA  
 **Source UI:** `lib/features/common/analytics/`  
 **Status:** Proposed API contract derived from the supplied Flutter source and checked against the existing API reference, Postman collection, Owner Student API and Owner Seat Management API.
@@ -33,11 +33,11 @@ The analytics page is an aggregated read/reporting view. It must reuse the exist
 
 The supplied provider currently contains illustrative values, including:
 
-- Total Revenue: `₹68,450`, change `+14.2%`.
+- Total Revenue: `INR68,450`, change `+14.2%`.
 - Total Students: `288`, change `+8.4%`.
 - Seat Occupancy: `70%`.
-- Collections: `₹54,200`, `79%`.
-- Financial overview sample values: Income `₹1,28,500`, Expenses `₹38,200`, Net Profit `₹90,300`.
+- Collections: `INR54,200`, `79%`.
+- Financial overview sample values: Income `INR1,28,500`, Expenses `INR38,200`, Net Profit `INR90,300`.
 - Weekly visits: Monday to Sunday, with an average derived from the seven daily values.
 - Floor occupancy sample values: Floor 1 `70`, Floor 2 `82`, Floor 3 `58`.
 - Seat sample values: Occupied `42`, Vacant `14`, Pending `4`.
@@ -577,7 +577,7 @@ Required fields:
 | `previousTotal` | Active count at equivalent previous-period end |
 | `changePercent` | Percentage change versus previous period |
 
-Important: Student registry creation and admission creation are separate concepts in the Student API. The product must decide whether the UI's “new students” means newly registered profiles or newly admitted active students. For an occupancy/business metric, newly admitted active students is usually the more meaningful value. The response should expose both if the UI later needs both definitions.
+Important: Student registry creation and admission creation are separate concepts in the Student API. The product must decide whether the UI's "new students" means newly registered profiles or newly admitted active students. For an occupancy/business metric, newly admitted active students is usually the more meaningful value. The response should expose both if the UI later needs both definitions.
 
 No new student-list endpoint is required.
 
@@ -673,8 +673,8 @@ Required fields:
 
 Use the same overdue-day bucket definitions as the Owner Student Management API:
 
-- `days1To7`: 1–7 whole calendar days overdue.
-- `days8To15`: 8–15 whole calendar days overdue.
+- `days1To7`: 1-7 whole calendar days overdue.
+- `days8To15`: 8-15 whole calendar days overdue.
 - `days16Plus`: 16 or more whole calendar days overdue.
 
 A student with multiple overdue dues should be counted once in `studentCount`; amounts should sum all eligible outstanding overdue dues. Do not create a duplicate overdue-list endpoint. If the Owner opens an overdue student list, reuse the existing Owner Student list filters/payment-status behavior.
@@ -707,7 +707,7 @@ Rules:
 - Insights must be scoped to the selected tenant and date range.
 - Only include insights supported by sufficient data.
 - If there is no prior-period data, do not claim a growth percentage.
-- Do not generate a “highest occupancy floor” insight if no floor has active seats.
+- Do not generate a "highest occupancy floor" insight if no floor has active seats.
 - The UI chooses icons/colors based on `type`/`severity`; the API must not return Flutter `IconData` or color hex values.
 - The insight descriptions should be concise and safe to display without further formatting.
 
@@ -931,7 +931,7 @@ Clear old chart/card data or mark it as stale while a new filter request is load
 
 ---
 
-## 20. Endpoint summary — Owner Analytics
+## 20. Endpoint summary - Owner Analytics
 
 | Method | Endpoint | Status | Purpose |
 |---|---|---|---|
@@ -963,7 +963,7 @@ No new endpoint is proposed for each chart or card.
 2. Are security deposits excluded from income and net profit until forfeited/recognized?
 3. Which existing Expenses data store/API is authoritative, and what date field determines expense reporting?
 4. Does `Total Students` mean active students at the end of the selected range, or all registered profiles?
-5. Does “new students” mean new profiles or successfully admitted students?
+5. Does "new students" mean new profiles or successfully admitted students?
 6. Should seat occupancy percentage count half-day seats as occupied capacity, and how should a partially available half-day seat affect the ratio?
 7. Should pending collection include only not-yet-due balances, with overdue shown separately?
 8. Should overdue values be historical as of `toDate` or current outstanding overdue balances at request time?

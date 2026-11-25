@@ -12,9 +12,9 @@ const redisConfig = {
 export const redis = new Redis(redisConfig);
 
 redis.on('connect', () => {
-  console.log('✅ Redis connected successfully.');
+  console.log('[OK] Redis connected successfully.');
 });
 
 redis.on('error', (err) => {
-  console.error('❌ Redis connection error:', err);
+  console.error('[ERR] Redis connection error:', err);
 });

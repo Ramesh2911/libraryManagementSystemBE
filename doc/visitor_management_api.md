@@ -15,7 +15,7 @@ The same visitor screens are used by **Owner** and **Coordinator**. Therefore, b
 
 ---
 
-## 2. Existing endpoints — reuse these only
+## 2. Existing endpoints - reuse these only
 
 | Method | Endpoint | Purpose |
 |---|---|---|
@@ -65,7 +65,7 @@ The purpose selector currently contains these exact options:
 
 The Flutter form validates Full Name, Phone Number, WhatsApp Number, Email Address, Purpose, Company/Organization, Number of Persons, and Date & Time as required. Notes / Remarks is optional.
 
-Phone and WhatsApp values should be stored as strings so that `+` and country codes are preserved. The UI accepts 10–15 digits after removing non-digit characters.
+Phone and WhatsApp values should be stored as strings so that `+` and country codes are preserved. The UI accepts 10-15 digits after removing non-digit characters.
 
 ### Visitor list card
 
@@ -110,8 +110,8 @@ Used by the Add Visitor screen's **Save Visitor** action.
 | Field | Rule |
 |---|---|
 | `full_name` | Required, non-empty string |
-| `phone_number` | Required; 10–15 digits after removing formatting characters |
-| `whatsapp_number` | Required; 10–15 digits after removing formatting characters |
+| `phone_number` | Required; 10-15 digits after removing formatting characters |
+| `whatsapp_number` | Required; 10-15 digits after removing formatting characters |
 | `email` | Required, valid email address |
 | `purpose` | Required; use one of the six UI options listed above |
 | `company` | Required, non-empty string |
@@ -119,7 +119,7 @@ Used by the Add Visitor screen's **Save Visitor** action.
 | `visit_date_time` | Required ISO-8601 datetime; UI allows today through two years ahead |
 | `notes` | Optional string |
 
-### Success response — proposed
+### Success response - proposed
 
 ```json
 {
@@ -168,7 +168,7 @@ GET /api/visitors?search=rahul&status=checked_in&from_date=2026-11-01&to_date=20
 
 For the **All** filter, omit `status`. For the date filter, send both `from_date` and `to_date` when a date range is selected. The UI's end date is inclusive.
 
-### Success response — proposed
+### Success response - proposed
 
 ```json
 {
@@ -207,9 +207,9 @@ For the **All** filter, omit `status`. For the date filter, send both `from_date
 
 The summary counts correspond to the three UI filter labels:
 
-- `total_count` → All
-- `checked_in_count` → Checked In
-- `checked_out_count` → Checked Out
+- `total_count` -> All
+- `checked_in_count` -> Checked In
+- `checked_out_count` -> Checked Out
 
 **Count behavior to confirm:** The current Flutter demo calculates counts from its complete in-memory visitor list, independently of the selected status/search/date filters. To preserve that behavior, return summary counts for the unfiltered visitor set and apply the query filters only to `visitors`.
 
@@ -229,7 +229,7 @@ The API reference and Postman collection already contain this route. The All Vis
 |---|---|---|
 | `id` | string | Visitor ID |
 
-### Request body — proposed
+### Request body - proposed
 
 ```json
 {
@@ -242,7 +242,7 @@ Allowed values based on the Flutter enum:
 - `checked_in`
 - `checked_out`
 
-### Success response — proposed
+### Success response - proposed
 
 ```json
 {

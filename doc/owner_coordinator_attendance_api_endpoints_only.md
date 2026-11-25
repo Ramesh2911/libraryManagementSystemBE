@@ -1,4 +1,4 @@
-# SmartLibrary — Shared Owner & Coordinator Attendance API (Room-wise QR)
+# SmartLibrary - Shared Owner & Coordinator Attendance API (Room-wise QR)
 
 > Owner and Coordinator use the same endpoint paths. Backend permissions determine which Reading Rooms each user can access. Each Reading Room has a separate QR session.
 >
@@ -45,7 +45,7 @@
 
 **Request body:** None.  
 **Query parameters:**
-- `readingRoomId` — required Reading Room ID.
+- `readingRoomId` - required Reading Room ID.
 
 **Success response:**
 ```json
@@ -148,15 +148,15 @@
 
 **Request body:** None.  
 **Query parameters:**
-- `date` — `YYYY-MM-DD`
-- `readingRoomId` — optional Reading Room filter
-- `status` — optional: `present`, `absent`, `late`, `half_day`, `leave`, `pending`
-- `search` — optional Student name or admission number
-- `floorId` — optional, if required by the UI
-- `page` — page number
-- `limit` — records per page
-- `sort` — e.g. `checkInAt`
-- `order` — `asc` or `desc`
+- `date` - `YYYY-MM-DD`
+- `readingRoomId` - optional Reading Room filter
+- `status` - optional: `present`, `absent`, `late`, `half_day`, `leave`, `pending`
+- `search` - optional Student name or admission number
+- `floorId` - optional, if required by the UI
+- `page` - page number
+- `limit` - records per page
+- `sort` - e.g. `checkInAt`
+- `order` - `asc` or `desc`
 
 **Success response:**
 ```json
@@ -243,9 +243,9 @@
 
 **Request body:** None.  
 **Query parameters:**
-- `month` — required, `YYYY-MM`
-- `readingRoomId` — optional Reading Room filter
-- `studentId` — optional Student filter, if required by the UI
+- `month` - required, `YYYY-MM`
+- `readingRoomId` - optional Reading Room filter
+- `studentId` - optional Student filter, if required by the UI
 
 **Success response:**
 ```json

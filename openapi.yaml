@@ -1,8 +1,8 @@
-﻿openapi: 3.0.3
+openapi: 3.0.3
 info:
   title: SmartLibrary API
   description: |
-    SmartLibrary Library Management System â€” REST API.
+    SmartLibrary Library Management System - REST API.
 
     **Envelope:** every JSON response uses `{success, statusCode, message, data, timestamp}`.
 
@@ -26,9 +26,9 @@ tags:
   - name: Auth
     description: "Authentication, OTP, sessions (doc: auth_api.md)"
   - name: Owner Setup
-    description: "6-step owner onboarding (planned â€” auth_api.md)"
+    description: "6-step owner onboarding (planned - auth_api.md)"
   - name: Student Self
-    description: "Student self-profile (planned â€” auth_api.md)"
+    description: "Student self-profile (planned - auth_api.md)"
   - name: Libraries
   - name: Floors
   - name: Room Types
@@ -41,7 +41,7 @@ tags:
   - name: Students
     description: "Admin-side student CRUD (existing)"
   - name: Owner Students
-    description: "Owner student/admission/payment module (planned â€” owner_student_management_api.md)"
+    description: "Owner student/admission/payment module (planned - owner_student_management_api.md)"
   - name: Admissions
   - name: Payments
   - name: Deposits
@@ -53,9 +53,9 @@ tags:
   - name: Admin
     description: "Super-admin platform metrics"
   - name: Owner Dashboard
-    description: "Dashboard, hubs, offers, notifications (planned â€” owner_dashboard_api.md)"
+    description: "Dashboard, hubs, offers, notifications (planned - owner_dashboard_api.md)"
   - name: Owner Analytics
-    description: "Consolidated analytics + export (planned â€” owner_analytics_api.md)"
+    description: "Consolidated analytics + export (planned - owner_analytics_api.md)"
 security:
   - bearerAuth: []
 paths:
@@ -181,7 +181,7 @@ paths:
     post:
       tags: [Auth]
       summary: "Refresh access token (doc-style path)"
-      description: "Alias of POST /api/auth/refresh â€” matches auth_api.md path."
+      description: "Alias of POST /api/auth/refresh - matches auth_api.md path."
       x-status: implemented
       requestBody:
         required: true
@@ -199,7 +199,7 @@ paths:
     post:
       tags: [Auth, Admin]
       summary: "Super-admin login (doc-style path)"
-      description: "Alias of POST /api/auth/admin/login â€” matches auth_api.md path."
+      description: "Alias of POST /api/auth/admin/login - matches auth_api.md path."
       x-status: implemented
       requestBody:
         required: true
@@ -289,12 +289,12 @@ paths:
         '200': { $ref: '#/components/responses/Envelope200' }
         '404': { $ref: '#/components/responses/Error404' }
 
-  # ===================== AUTH (planned â€” auth_api.md) =====================
+  # ===================== AUTH (planned - auth_api.md) =====================
   /api/v1/auth/send-otp:
     post:
       tags: [Auth]
       summary: "Send 6-digit OTP to phone"
-      description: "Dev bypass â€” only `9876543210` accepted; OTP is always `123456` (Redis, 5min TTL, 30s cooldown, max 3/10min). SMS gateway comes later. Response may include `devOtp` outside production."
+      description: "Dev bypass - only `9876543210` accepted; OTP is always `123456` (Redis, 5min TTL, 30s cooldown, max 3/10min). SMS gateway comes later. Response may include `devOtp` outside production."
       x-status: implemented
       security: []
       requestBody:
@@ -331,7 +331,7 @@ paths:
   /api/v1/auth/verify-otp:
     post:
       tags: [Auth]
-      summary: "Verify OTP â†’ issue JWT pair"
+      summary: "Verify OTP  -> ' issue JWT pair"
       description: "Returns access + refresh token, `user`, and `isSetupComplete` / `isProfileComplete` flags. Owner looked up by contact = phone."
       x-status: implemented
       security: []
@@ -829,7 +829,7 @@ paths:
   /api/v1/lockers/{id}/status:
     patch:
       tags: [Lockers]
-      summary: "Toggle AVAILABLE â†” MAINTENANCE (ASSIGNED excluded)"
+      summary: "Toggle AVAILABLE -> MAINTENANCE (ASSIGNED excluded)"
       description: "Planned (owner_coordinator_locker_management_api.md)."
       x-status: planned
       parameters:
@@ -854,7 +854,7 @@ paths:
     get:
       tags: [Lockers]
       summary: "Locker detail (optional)"
-      description: "Doc: not required if list includes currentAssignment â€” add only if UI needs a detail route."
+      description: "Doc: not required if list includes currentAssignment - add only if UI needs a detail route."
       x-status: planned
       parameters:
         - name: id
@@ -1106,12 +1106,12 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
 
-  # ===================== ATTENDANCE (planned â€” QR + register) =====================
+  # ===================== ATTENDANCE (planned - QR + register) =====================
   /api/v1/attendance/qr/session:
     post:
       tags: [Attendance]
       summary: "Create QR session for room"
-      description: "Planned â€” owner/coordinator; signed QR payload valid for limited window."
+      description: "Planned - owner/coordinator; signed QR payload valid for limited window."
       x-status: planned
       requestBody:
         required: true
@@ -1177,7 +1177,7 @@ paths:
     get:
       tags: [Attendance]
       summary: "Daily attendance register (summary + paginated rows)"
-      description: "Planned â€” owner tenant-wide, coordinator assigned rooms only."
+      description: "Planned - owner tenant-wide, coordinator assigned rooms only."
       x-status: planned
       parameters:
         - name: date
@@ -1321,7 +1321,7 @@ paths:
     patch:
       tags: [Visitors]
       summary: "Update visitor status (checked_in / checked_out)"
-      description: "Single route for both check-in and check-out â€” do not add separate endpoints."
+      description: "Single route for both check-in and check-out - do not add separate endpoints."
       x-status: implemented
       parameters:
         - name: id
@@ -1477,11 +1477,11 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
 
-  # ===================== OWNER SETUP (planned â€” auth_api.md) =====================
+  # ===================== OWNER SETUP (planned - auth_api.md) =====================
   /api/v1/owner/setup/basic-details:
     post:
       tags: [Owner Setup]
-      summary: "Step 1 â€” owner + library basic details"
+      summary: "Step 1 - owner + library basic details"
       x-status: planned
       requestBody:
         required: true
@@ -1502,7 +1502,7 @@ paths:
   /api/v1/owner/setup/location-details:
     post:
       tags: [Owner Setup]
-      summary: "Step 2 â€” address / geo"
+      summary: "Step 2 - address / geo"
       x-status: planned
       requestBody:
         required: true
@@ -1523,7 +1523,7 @@ paths:
   /api/v1/owner/setup/operation-timing:
     post:
       tags: [Owner Setup]
-      summary: "Step 3 â€” opening hours + time slots"
+      summary: "Step 3 - opening hours + time slots"
       x-status: planned
       requestBody:
         required: true
@@ -1551,7 +1551,7 @@ paths:
   /api/v1/owner/setup/rooms-setup:
     post:
       tags: [Owner Setup]
-      summary: "Step 4 â€” floors + room types + reading rooms"
+      summary: "Step 4 - floors + room types + reading rooms"
       x-status: planned
       requestBody:
         required: true
@@ -1581,7 +1581,7 @@ paths:
   /api/v1/owner/setup/fees-deposit:
     post:
       tags: [Owner Setup]
-      summary: "Step 5 â€” fee plans + deposit config"
+      summary: "Step 5 - fee plans + deposit config"
       x-status: planned
       requestBody:
         required: true
@@ -1605,21 +1605,21 @@ paths:
   /api/v1/owner/setup/review-summary:
     get:
       tags: [Owner Setup]
-      summary: "Step 6a â€” review everything before finalize"
+      summary: "Step 6a - review everything before finalize"
       x-status: planned
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
   /api/v1/owner/setup/finalize:
     post:
       tags: [Owner Setup]
-      summary: "Step 6b â€” commit draft (single transaction)"
+      summary: "Step 6b - commit draft (single transaction)"
       description: "Creates Library + Floor + RoomType + TimeSlots + ReadingRoom + Seats + FeePlan atomically."
       x-status: planned
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '409': { $ref: '#/components/responses/Error409' }
 
-  # ===================== STUDENT SELF (planned â€” auth_api.md) =====================
+  # ===================== STUDENT SELF (planned - auth_api.md) =====================
   /api/v1/student/register-profile:
     post:
       tags: [Student Self]
@@ -1684,12 +1684,12 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
 
-  # ===================== OWNER STUDENTS (planned â€” owner_student_management_api.md) =====================
+  # ===================== OWNER STUDENTS (planned - owner_student_management_api.md) =====================
   /api/v1/owner/students:
     get:
       tags: [Owner Students]
       summary: "List students + hub-wide summary counters"
-      description: "Dual filters: studentStatus Ã— paymentStatus Ã— search Ã— seat/locker flags."
+      description: "Dual filters: studentStatus - paymentStatus - search - seat/locker flags."
       x-status: planned
       parameters:
         - name: search
@@ -1833,7 +1833,7 @@ paths:
   /api/v1/owner/students/{id}/lifecycle:
     patch:
       tags: [Owner Students]
-      summary: "Lifecycle transition (active â†” closed)"
+      summary: "Lifecycle transition (active -> closed)"
       x-status: planned
       parameters:
         - name: id
@@ -1965,7 +1965,7 @@ paths:
     get:
       tags: [Owner Students]
       summary: "Student form configuration (dropdowns/rules)"
-      description: "From owner_student_management_api.md â€” fee plans, room types, required fields for Add Student form."
+      description: "From owner_student_management_api.md - fee plans, room types, required fields for Add Student form."
       x-status: planned
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
@@ -2158,7 +2158,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
 
-  # ===================== STUDENT REQUESTS (planned â€” new model) =====================
+  # ===================== STUDENT REQUESTS (planned - new model) =====================
   /api/v1/owner/student-requests:
     get:
       tags: [Owner Students]
@@ -2252,7 +2252,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
 
-  # ===================== OWNER DASHBOARD (planned â€” owner_dashboard_api.md) =====================
+  # ===================== OWNER DASHBOARD (planned - owner_dashboard_api.md) =====================
   /api/v1/owner/hubs:
     get:
       tags: [Owner Dashboard]
@@ -2409,7 +2409,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
 
-  # ===================== OWNER ANALYTICS (planned â€” owner_analytics_api.md) =====================
+  # ===================== OWNER ANALYTICS (planned - owner_analytics_api.md) =====================
   /api/v1/owner/analytics:
     get:
       tags: [Owner Analytics]

@@ -1,7 +1,7 @@
-# SmartLibrary — Locker Management API Documentation
+# SmartLibrary - Locker Management API Documentation
 
 **Version:** 1.0  
-**Module:** Common Locker Management — Owner & Coordinator  
+**Module:** Common Locker Management - Owner & Coordinator  
 **Audience:** Backend developers, Flutter developers, QA  
 **Source UI:** `lib/features/common/lockers/`, `lib/features/owner/lockers_screen/`, `lib/features/coordinator/add_lockers/`, `lib/features/coordinator/assign_locker/`  
 **Status:** Proposed API contract derived from the supplied Flutter source and checked against the existing API reference and Postman collection.
@@ -16,7 +16,7 @@ Locker Management is a shared feature for **Owner and Coordinator**. The main Lo
 
 | # | Screen / UI surface | Role | API responsibility |
 |---|---|---|---|
-| 1 | Lockers — overview | Owner & Coordinator | Load locker inventory, summary counts, status, location and assignment data |
+| 1 | Lockers - overview | Owner & Coordinator | Load locker inventory, summary counts, status, location and assignment data |
 | 2 | Search lockers | Owner & Coordinator | Search by locker number or assigned student |
 | 3 | Locker status filters | Owner & Coordinator | Filter All, Assigned, Available, Pending, Half Day and Maintenance |
 | 4 | Locker grid | Owner & Coordinator | Render locker tiles with current status |
@@ -39,7 +39,7 @@ The common `LockersProvider` currently defines:
 - Assigned lockers show student details, roll number, class/department, assignment date and locker condition in the detail sheet. Several of these values are currently hardcoded placeholders.
 - The Add Locker form contains locker name/number, block, floor, fee and initial status (`available` or `maintenance`).
 - The Assign Locker form contains selected locker, selected student, start date, end date, total amount due, amount paid now and remaining balance.
-- The current Add Locker provider defaults the sample fee to ₹200. The assignment provider contains sample values (locker `B-18`, sample student, 12 Oct–12 Nov 2026 and ₹250). These are examples only, not business defaults.
+- The current Add Locker provider defaults the sample fee to INR200. The assignment provider contains sample values (locker `B-18`, sample student, 12 Oct-12 Nov 2026 and INR250). These are examples only, not business defaults.
 - `confirmAssignment()` is currently a placeholder.
 - Locker detail actions such as Reassign, Delete student, Mark for Maintenance and Remove Maintenance have empty callbacks. They require wiring to the API contract below.
 
@@ -79,11 +79,11 @@ The API reference uses `Authorization: Bearer ...` and `x-tenant-id`. The Postma
 
 Do **not** create:
 
-- `/api/owner/lockers` or `/api/coordinator/lockers` — both roles use `/api/lockers`.
-- `/api/lockers/list`, `/api/lockers/search` or one endpoint per filter — use query parameters on `GET /api/lockers`.
-- `/api/lockers/:id/allocate` — use the existing `/assign` route.
-- `/api/lockers/:id/unassign`, `/remove-student` or `/vacate` — use the existing `/release` route.
-- `/api/locker-payments` or `/api/lockers/:id/payment` — use `/api/payments/record` and the existing payment ledger.
+- `/api/owner/lockers` or `/api/coordinator/lockers` - both roles use `/api/lockers`.
+- `/api/lockers/list`, `/api/lockers/search` or one endpoint per filter - use query parameters on `GET /api/lockers`.
+- `/api/lockers/:id/allocate` - use the existing `/assign` route.
+- `/api/lockers/:id/unassign`, `/remove-student` or `/vacate` - use the existing `/release` route.
+- `/api/locker-payments` or `/api/lockers/:id/payment` - use `/api/payments/record` and the existing payment ledger.
 - New student, floor, block/room, attendance or coordinator CRUD routes for this feature.
 
 ### 2.3 One additional status endpoint
@@ -241,9 +241,9 @@ Only return fields the caller is authorized to see. Avoid returning identity doc
 
 ---
 
-## 6. GET `/api/lockers` — list and overview
+## 6. GET `/api/lockers` - list and overview
 
-<badge color="success">Existing endpoint — extend its response contract</badge>
+<badge color="success">Existing endpoint - extend its response contract</badge>
 
 ### Purpose
 
@@ -290,12 +290,12 @@ GET /api/lockers?blockId=block_a&page=1&limit=100
 
 For the six Flutter filter chips:
 
-- All → omit `status`.
-- Assigned → `status=occupied`.
-- Available → `status=available`.
-- Pending → `status=pending`.
-- Half Day → `status=half_day`.
-- Maintenance → `status=maintenance`.
+- All -> omit `status`.
+- Assigned -> `status=occupied`.
+- Available -> `status=available`.
+- Pending -> `status=pending`.
+- Half Day -> `status=half_day`.
+- Maintenance -> `status=maintenance`.
 
 ### Response
 
@@ -328,7 +328,7 @@ For the six Flutter filter chips:
         "blockName": "Block A",
         "floorId": "floor_ground",
         "floorName": "Ground Floor",
-        "locationLabel": "Block A • Ground Floor",
+        "locationLabel": "Block A - Ground Floor",
         "feeAmount": 200.00,
         "currency": "INR",
         "billingPeriod": "monthly",
@@ -361,7 +361,7 @@ For the six Flutter filter chips:
         "blockName": "Block A",
         "floorId": "floor_ground",
         "floorName": "Ground Floor",
-        "locationLabel": "Block A • Ground Floor",
+        "locationLabel": "Block A - Ground Floor",
         "feeAmount": 200.00,
         "currency": "INR",
         "billingPeriod": "monthly",
@@ -398,19 +398,19 @@ For the six Flutter filter chips:
 
 ---
 
-## 7. POST `/api/lockers` — add locker
+## 7. POST `/api/lockers` - add locker
 
-<badge color="success">Existing endpoint — define request/response</badge>
+<badge color="success">Existing endpoint - define request/response</badge>
 
 ### UI fields
 
 The Add Locker screen contains:
 
-- Locker Name / Number — required.
-- Select Block — required.
-- Floor Location — required.
-- Set Fees — required numeric amount.
-- Initial Status — `available` or `maintenance`.
+- Locker Name / Number - required.
+- Select Block - required.
+- Floor Location - required.
+- Set Fees - required numeric amount.
+- Initial Status - `available` or `maintenance`.
 - A preview card displaying the locker number.
 
 ### Request
@@ -439,7 +439,7 @@ POST /api/lockers
 
 | Field | Type | Required | Validation |
 |---|---|---:|---|
-| `lockerNumber` | string | Yes | Trimmed, 1–40 characters; unique within tenant |
+| `lockerNumber` | string | Yes | Trimmed, 1-40 characters; unique within tenant |
 | `displayName` | string | No | Up to 80 characters |
 | `blockId` | string | As configured | Must belong to tenant |
 | `floorId` | string | As configured | Must belong to tenant and selected block |
@@ -465,7 +465,7 @@ POST /api/lockers
       "blockName": "Block A",
       "floorId": "floor_ground",
       "floorName": "Ground Floor",
-      "locationLabel": "Block A • Ground Floor",
+      "locationLabel": "Block A - Ground Floor",
       "feeAmount": 200.00,
       "currency": "INR",
       "billingPeriod": "monthly",
@@ -491,9 +491,9 @@ POST /api/lockers
 
 ---
 
-## 8. POST `/api/lockers/:id/assign` — assign or reassign locker
+## 8. POST `/api/lockers/:id/assign` - assign or reassign locker
 
-<badge color="success">Existing endpoint — define request/response</badge>
+<badge color="success">Existing endpoint - define request/response</badge>
 
 ### UI flow
 
@@ -604,7 +604,7 @@ For a reassign action, set `reassign: true` and provide the currently active `pr
 
 ---
 
-## 9. Payment handling — reuse existing payment APIs
+## 9. Payment handling - reuse existing payment APIs
 
 The Assign Locker screen displays a payment summary, but the locker module must not implement its own payment ledger.
 
@@ -652,9 +652,9 @@ The API must return a canonical payment transaction ID and the updated balance. 
 
 ---
 
-## 10. POST `/api/lockers/:id/release` — release locker
+## 10. POST `/api/lockers/:id/release` - release locker
 
-<badge color="success">Existing endpoint — define request/response</badge>
+<badge color="success">Existing endpoint - define request/response</badge>
 
 ### Purpose
 
@@ -718,7 +718,7 @@ POST /api/lockers/lck_1001/release
 
 ---
 
-## 11. PATCH `/api/lockers/:id/status` — maintenance status
+## 11. PATCH `/api/lockers/:id/status` - maintenance status
 
 <badge color="info">New only if no generic locker status/update route exists</badge>
 
@@ -777,7 +777,7 @@ PATCH /api/lockers/lck_1002/status
 
 ### Rules
 
-- Allowed status changes from this endpoint should be limited to maintenance transitions (`available` ↔ `maintenance`) unless a broader status-transition matrix is explicitly defined.
+- Allowed status changes from this endpoint should be limited to maintenance transitions (`available`   `maintenance`) unless a broader status-transition matrix is explicitly defined.
 - Do not permit changing an occupied locker to available through this endpoint. Release its assignment first.
 - Do not permit a locker with an active assignment to enter maintenance unless the business explicitly supports emergency maintenance while assigned. If allowed, the assignment must be flagged and the student notified by the existing notification system.
 - Record actor, old status, new status, reason, timestamp and tenant in the audit log.
@@ -809,7 +809,7 @@ The detail sheet is not a separate screen endpoint. It opens from a locker tile 
 
 The current sheet includes Call and Chat icons with empty callbacks. If wired, use existing phone/contact and notification/deep-link behavior. Do not add locker-specific communication endpoints.
 
-The current sheet includes a “Delete student” label, but this must **not** delete a student record. If the intended action is to remove the student from the locker, wire it to the existing release endpoint and rename the UI action to **Release Locker** or **Remove Assignment** to avoid destructive ambiguity.
+The current sheet includes a "Delete student" label, but this must **not** delete a student record. If the intended action is to remove the student from the locker, wire it to the existing release endpoint and rename the UI action to **Release Locker** or **Remove Assignment** to avoid destructive ambiguity.
 
 ### Optional detail fetch
 
@@ -852,7 +852,7 @@ Rules:
 
 - Search by locker number, assigned student's name or student code.
 - Case-insensitive and whitespace-trimmed.
-- Debounce requests in Flutter (recommended 300–400 ms).
+- Debounce requests in Flutter (recommended 300-400 ms).
 - Reset page to `1` when search changes.
 - Search must be scoped to the caller's authorized hub and coordinator area.
 
@@ -1009,7 +1009,7 @@ Retain the selected search/filter state after a mutation where practical. Do not
 
 ## 18. Endpoint summary
 
-### Existing endpoints — use and document, do not duplicate
+### Existing endpoints - use and document, do not duplicate
 
 | Method | Endpoint | Status | Screen/action |
 |---|---|---|---|

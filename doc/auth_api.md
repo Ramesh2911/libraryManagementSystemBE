@@ -1,4 +1,4 @@
-# SmartLibrary — Full Authentication & Registration API Specification
+# SmartLibrary - Full Authentication & Registration API Specification
 
 This document details the complete end-to-end authentication and registration lifecycle for the **SmartLibrary** platform across all user roles (**Owner**, **Coordinator**, **Student**, and **Super Admin**). It covers initial OTP verification, token lifecycle, multi-step business onboarding for owners, student profile registration, coordinator provisioning, error contracts, and client-side route transitions.
 
@@ -158,7 +158,7 @@ These endpoints power the primary phone-based authentication used by **Owner**, 
     "role": "owner"
   }
   ```
-- **Response (`200 OK`) — Owner Returning / Incomplete Setup**:
+- **Response (`200 OK`) - Owner Returning / Incomplete Setup**:
   ```json
   {
     "success": true,
@@ -183,7 +183,7 @@ These endpoints power the primary phone-based authentication used by **Owner**, 
     "timestamp": "2026-11-24T10:01:00Z"
   }
   ```
-- **Response (`200 OK`) — New Student (Profile Incomplete)**:
+- **Response (`200 OK`) - New Student (Profile Incomplete)**:
   ```json
   {
     "success": true,
@@ -362,9 +362,9 @@ sequenceDiagram
   }
   ```
   *Validation Rules:*
-  - `readingRoomName`: String, 3–100 chars (Required).
+  - `readingRoomName`: String, 3-100 chars (Required).
   - `branchName`: String, optional.
-  - `ownerName`: String, 2–80 chars (Required).
+  - `ownerName`: String, 2-80 chars (Required).
   - `phone`: String, 10-digit phone prefilled from session (Required).
   - `email`: Valid email format (Required).
 - **Response (`200 OK`)**:
@@ -630,7 +630,7 @@ sequenceDiagram
         "totalSeats": 140,
         "acSeats": 60,
         "nonAcSeats": 80,
-        "monthlyFeeRange": "₹1,400 - ₹1,800",
+        "monthlyFeeRange": "INR1,400 - INR1,800",
         "operatingHours": "06:00 AM - 10:00 PM",
         "status": "active"
       },

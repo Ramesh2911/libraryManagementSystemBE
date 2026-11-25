@@ -1,7 +1,7 @@
 # SmartLibrary --- Owner Seat Management API Documentation
 
 **Version:** 1.1\
-**Module:** Owner → Seat Management\
+**Module:** Owner -> Seat Management\
 **Audience:** Backend developers, Flutter developers, QA\
 **API namespace:** Existing SmartLibrary API routes (`/api/...`)\
 **Source UI:** `lib/features/common/seat_management/` and Owner Room
@@ -872,7 +872,7 @@ The endpoint is retained because it already exists in the API reference,
 but the UI should call it only if a future Owner action is added.
 
 Do not allow an occupied or reserved seat to become inactive unless the
-backend has a defined safe transition (e.g. first transfer/vacate/cancel
+backend has a defined safe transition (e.g. first transfer/vacate/cancel
 the allocation).
 
 ### 7.5 Seat history
@@ -975,7 +975,7 @@ following ownership rules:
   View selected seat details          Use the selected seat object from map
                                       response
 
-  New Student → New Admission seat    Existing `GET /owner/admissions/seats` from
+  New Student -> New Admission seat    Existing `GET /owner/admissions/seats` from
   picker                              Student API v1
 
   Complete New Admission and reserve  Existing `POST /owner/admissions` from
@@ -985,7 +985,7 @@ following ownership rules:
   Manual allocation outside New       Existing `POST /api/seats/:id/allocate`
   Admission                           
 
-  Student Profile → Change Seat       Existing `POST /api/seats/:id/transfer`
+  Student Profile -> Change Seat       Existing `POST /api/seats/:id/transfer`
 
   Student leaves / allocation ends    Existing `POST /api/seats/:id/vacate`, or
                                       call it internally in the admission-close
@@ -1061,7 +1061,7 @@ The seat map must use the same allocation rules as New Admission.
     truth.
 
 If the hub has configurable shifts, use its saved time-slot definitions.
-Do not hardcode `08:00–13:00` and `13:00–20:00` unless those are the
+Do not hardcode `08:00-13:00` and `13:00-20:00` unless those are the
 actual configured values.
 
 ------------------------------------------------------------------------

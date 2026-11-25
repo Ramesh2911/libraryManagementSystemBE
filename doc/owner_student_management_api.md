@@ -1,8 +1,8 @@
-# SmartLibrary — Owner Student Management API Documentation
+# SmartLibrary - Owner Student Management API Documentation
 
 **Version:** 1.0  
 **Audience:** Backend developers, Flutter developers, QA  
-**Module:** Owner → Students, Add Student, New Admission, Student Profile, Student Requests & Queries  
+**Module:** Owner -> Students, Add Student, New Admission, Student Profile, Student Requests & Queries  
 **Base path:** `/api/v1`
 
 ---
@@ -14,11 +14,11 @@ This specification defines the backend contract required by the existing Owner-s
 The APIs cover:
 
 1. All Students list, summary counters, search and combined filters.
-2. Student profile — Overview, Payments and History tabs.
+2. Student profile - Overview, Payments and History tabs.
 3. Add New Student form, mobile OTP verification, photo and document upload.
-4. New Admission — floor, room, room type, seat availability, plan, time slot, dates and fee calculation.
+4. New Admission - floor, room, room type, seat availability, plan, time slot, dates and fee calculation.
 5. Payment collection and payment confirmation.
-6. Student Requests & Queries — seat booking, seat change, membership renewal and support issue review.
+6. Student Requests & Queries - seat booking, seat change, membership renewal and support issue review.
 7. Student lifecycle actions, seat transfer and admission/payment history.
 
 **Important implementation note:** The supplied Flutter providers currently contain demo/static data and TODO flows. The endpoints below are the proposed production API contract to replace those local implementations. They are not claims that a backend already exists.
@@ -147,7 +147,7 @@ X-Hub-Id: hub_8829a1b4
 
 ---
 
-## 3. Owner — All Students screen
+## 3. Owner - All Students screen
 
 ### 3.1 Get student list, summary counts and pagination
 
@@ -172,8 +172,8 @@ Returns the current hub's student list and unfiltered summary counters for the A
 - Both `studentStatus` and `paymentStatus` are independent filters; when both are supplied, a student must satisfy both.
 - Search is applied after filters.
 - `overdue` means an overdue balance with `overdueDays > 0`.
-- `overdue_1_7`: 1–7 whole calendar days overdue.
-- `overdue_8_15`: 8–15 whole calendar days overdue.
+- `overdue_1_7`: 1-7 whole calendar days overdue.
+- `overdue_8_15`: 8-15 whole calendar days overdue.
 - `overdue_16_plus`: 16 or more whole calendar days overdue.
 - `one_day_admission` means an active admission whose admission date is the hub's current local date and which is not a historical record.
 - Summary counts are calculated over all records in the hub, before search, pagination and selected filters.
@@ -184,7 +184,7 @@ Returns the current hub's student list and unfiltered summary counters for the A
 GET /api/v1/owner/students?studentStatus=active&paymentStatus=overdue_1_7&search=amit&page=1&limit=20
 ```
 
-**Response — `200 OK`**
+**Response - `200 OK`**
 
 ```json
 {
@@ -289,7 +289,7 @@ The profile screen has three tabs: `overview`, `payments`, `history`.
 
 `GET /owner/students/{studentId}`
 
-**Response — `200 OK`**
+**Response - `200 OK`**
 
 ```json
 {
@@ -633,7 +633,7 @@ Idempotency-Key: <unique-client-generated-key>
 
 Gender values: `male`, `female`, `other`. Document types: `college_id`, `id_proof`.
 
-**Response — `201 Created`**
+**Response - `201 Created`**
 
 ```json
 {
@@ -672,7 +672,7 @@ Returns supported gender/document options, upload limits and whether mobile veri
 
 ---
 
-## 6. New Admission — room, floor and seat selection
+## 6. New Admission - room, floor and seat selection
 
 The New Admission screen displays the selected student's identity, lets the Owner choose a floor, room type, room and seat, selects a plan and time slot, chooses validity dates and shows fee calculation.
 
@@ -905,7 +905,7 @@ Idempotency-Key: <unique-client-generated-key>
 }
 ```
 
-**Response — `201 Created`**
+**Response - `201 Created`**
 
 ```json
 {
@@ -1063,7 +1063,7 @@ After successful payment, the backend should atomically:
 
 `POST /owner/students/{studentId}/payments`
 
-Use this for the Student Profile → Collect Fee action and other fee collection entry points.
+Use this for the Student Profile -> Collect Fee action and other fee collection entry points.
 
 **Request**
 
@@ -1155,8 +1155,8 @@ The UI shows summary counters (`Pending`, `Approved`, `Rejected`), a search fiel
           "name": "Knowledge Hub Reading Room"
         },
         "category": "seat_booking",
-        "title": "New Seat Booking Request • Seat A3",
-        "subtitle": "Monthly AC Plan • ₹1,500/month",
+        "title": "New Seat Booking Request - Seat A3",
+        "subtitle": "Monthly AC Plan - INR1,500/month",
         "description": "Student selected Seat A3. Waiting for admission approval.",
         "seat": {
           "id": "seat_A3",

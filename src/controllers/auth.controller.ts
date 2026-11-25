@@ -456,7 +456,7 @@ export const verifyLoginOtp = async (req: Request, res: Response) => {
   }
 };
 
-// GET /api/auth/me — current user from verified JWT
+// GET /api/auth/me - current user from verified JWT
 export const getMe = async (req: Request, res: Response) => {
   try {
     const user = req.user;
