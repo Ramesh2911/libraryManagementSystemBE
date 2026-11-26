@@ -110,7 +110,17 @@ paths:
     post:
       tags: [Auth]
       summary: "Tenant login (phone + password for OWNER / COORDINATOR / STUDENT)"
+      description: |
+        Raw JSON response (NOT envelope).
+
+        - **Success:** `{ message, accessToken, refreshToken, user }`
+        - **COORDINATOR only:** also top-level `permissions` (module boolean map) and `user.permissions`
+        - **2FA enabled:** `{ message: "2FA required", tempToken }` → complete via `POST /api/v1/auth/login/verify-2fa`
+        - **Errors:** `{ error: "Invalid credentials" }` (401) or `{ error: "Role is required" }` (400)
+
+        Demo credentials (local + live unless noted): Owner `9876543210`/`owner123`; local Student `9800000001`/`student123`, local Coordinator `9876500001`/`coord123`; live Student/Coordinator mobile `9876543210` with `student123`/`coord123`.
       x-status: implemented
+      security: []
       requestBody:
         required: true
         content:
@@ -119,38 +129,118 @@ paths:
               type: object
               required: [contact, password, role]
               properties:
-                contact: { type: string }
-                password: { type: string, format: password }
-                role: { type: string, enum: [OWNER, COORDINATOR, STUDENT] }
-                device: { type: string }
+                contact:
+                  type: string
+                  description: "10-digit phone matched to Owner.contact / Coordinator.mobile / Student.mobile"
+                  examples:
+                    owner: { value: "9876543210" }
+                    coordinator: { value: "9876500001" }
+                    student: { value: "9800000001" }
+                password: { type: string, format: password, examples: ["owner123", "coord123", "student123"] }
+                role:
+                  type: string
+                  enum: [OWNER, COORDINATOR, STUDENT]
+                  examples: [OWNER, COORDINATOR, STUDENT]
+                device: { type: string, example: "Swagger" }
+            examples:
+              owner:
+                summary: Owner login
+                value: { contact: "9876543210", password: "owner123", role: "OWNER", device: "Swagger" }
+              coordinator:
+                summary: Coordinator login (response includes permissions)
+                value: { contact: "9876500001", password: "coord123", role: "COORDINATOR", device: "Swagger" }
+              student:
+                summary: Student login
+                value: { contact: "9800000001", password: "student123", role: "STUDENT", device: "Swagger" }
       responses:
         '200':
-          description: "Login result (may require 2FA step). COORDINATOR responses include `permissions` (module map) and `user` object."
-          $ref: '#/components/responses/Envelope200'
-        '401': { $ref: '#/components/responses/Error401' }
+          description: "Login success (raw tokens) or 2FA challenge"
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/TenantLoginSuccess'
+                  - $ref: '#/components/schemas/TwoFaRequired'
+              examples:
+                studentSuccess:
+                  summary: Student / Owner success
+                  value:
+                    message: Login successful
+                    accessToken: "eyJhbGciOiJIUzI1NiIs..."
+                    refreshToken: "eyJhbGciOiJIUzI1NiIs..."
+                    user: { sub: "51f45408-734e-4b21-8567-d2079b5355cf", tenant_id: "11111111-1111-1111-1111-111111111111", role: "STUDENT" }
+                coordinatorSuccess:
+                  summary: Coordinator success (permissions included)
+                  value:
+                    message: Login successful
+                    accessToken: "eyJhbGciOiJIUzI1NiIs..."
+                    refreshToken: "eyJhbGciOiJIUzI1NiIs..."
+                    permissions: { students: true, admissions: true, payments: true, deposits: true, seats: true, lockers: true, visitors: true, attendance: true, setup: true, analytics: true }
+                    user:
+                      sub: "3e742b26-4eaf-4089-a471-a18db1a7b3fd"
+                      tenant_id: "11111111-1111-1111-1111-111111111111"
+                      role: COORDINATOR
+                      permissions: { students: true, seats: true, payments: true }
+                twoFa:
+                  summary: 2FA required
+                  value: { message: "2FA required", tempToken: "eyJhbGciOiJIUzI1NiIs..." }
+        '400':
+          description: "Missing contact/password/role or invalid role"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RawError' }
+              examples:
+                missingRole: { value: { error: "Role is required" } }
+                missingFields: { value: { error: "contact and password are required (OTP login: use /send-otp + /verify-otp)" } }
+        '401':
+          description: "Invalid credentials"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RawError' }
+              example: { error: "Invalid credentials" }
   /api/v1/auth/login/verify-2fa:
     post:
       tags: [Auth]
       summary: "Complete login with TOTP 2FA code"
+      description: "Raw JSON `{ message, accessToken, refreshToken }`. Body: `tempToken` from login 2FA challenge + `token` = 6-digit TOTP."
       x-status: implemented
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [email, code]
+              required: [tempToken, token]
               properties:
-                email: { type: string }
-                code: { type: string, example: '123456' }
+                tempToken: { type: string, description: "From login response when 2FA required" }
+                token: { type: string, example: '123456', description: "TOTP code" }
+                device: { type: string }
       responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
-        '401': { $ref: '#/components/responses/Error401' }
+        '200':
+          description: "Tokens issued"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+              example: { message: "Login successful", accessToken: "eyJ...", refreshToken: "eyJ..." }
+        '400':
+          description: "Missing/invalid tempToken"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RawError' }
+        '401':
+          description: "Invalid TOTP code"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RawError' }
+              example: { error: "Invalid 2FA token" }
   /api/v1/auth/admin/login:
     post:
       tags: [Auth, Admin]
       summary: "Web admin login (phone + password, no OTP)"
+      description: "Raw JSON `{ message, accessToken, refreshToken }` or `{ message: \"2FA required\", tempToken }`."
       x-status: implemented
+      security: []
       requestBody:
         required: true
         content:
@@ -160,51 +250,97 @@ paths:
               required: [phone, password]
               properties:
                 phone: { type: string, example: "9000000001" }
-                password: { type: string, format: password }
+                password: { type: string, format: password, example: "Admin@123" }
       responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
-        '401': { $ref: '#/components/responses/Error401' }
+        '200':
+          description: "Admin tokens or 2FA challenge"
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/TokenPair'
+                  - $ref: '#/components/schemas/TwoFaRequired'
+              example: { message: "Super Admin Login successful", accessToken: "eyJ...", refreshToken: "eyJ..." }
+        '401':
+          description: "Invalid credentials"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RawError' }
+              example: { error: "Invalid credentials" }
   /api/v1/auth/refresh:
     post:
       tags: [Auth]
       summary: "Refresh access token"
+      description: "Raw JSON `{ accessToken, refreshToken }`. Body field is `token` (the refresh JWT). Errors: `{ error }` 401/403."
       x-status: implemented
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [refreshToken]
+              required: [token]
               properties:
-                refreshToken: { type: string }
+                token: { type: string, description: "refreshToken from login" }
       responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
-        '401': { $ref: '#/components/responses/Error401' }
+        '200':
+          description: "New token pair"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+              example: { accessToken: "eyJ...", refreshToken: "eyJ..." }
+        '401':
+          description: "Refresh token required"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RawError' }
+              example: { error: "Refresh token required" }
+        '403':
+          description: "Invalid refresh token"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RawError' }
+              example: { error: "Invalid refresh token" }
   /auth/refresh-token:
     post:
       tags: [Auth]
       summary: "Refresh access token (doc-style path)"
-      description: "Alias of POST /api/auth/refresh - matches auth_api.md path."
+      description: "Alias of POST /api/v1/auth/refresh (raw token pair response; body field `token`)."
       x-status: implemented
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [refreshToken]
+              required: [token]
               properties:
-                refreshToken: { type: string }
+                token: { type: string }
       responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
-        '401': { $ref: '#/components/responses/Error401' }
+        '200':
+          description: "New token pair"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+        '401':
+          description: "Missing/invalid token"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RawError' }
+        '403':
+          description: "Invalid refresh token"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RawError' }
   /admin/auth/login:
     post:
       tags: [Auth, Admin]
       summary: "Super-admin login (doc-style path)"
-      description: "Alias of POST /api/auth/admin/login - matches auth_api.md path."
+      description: "Alias of POST /api/v1/auth/admin/login — raw token pair response."
       x-status: implemented
+      security: []
       requestBody:
         required: true
         content:
@@ -213,24 +349,44 @@ paths:
               type: object
               required: [phone, password]
               properties:
-                phone: { type: string }
-                password: { type: string, format: password }
+                phone: { type: string, example: "9000000001" }
+                password: { type: string, format: password, example: "Admin@123" }
       responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
-        '401': { $ref: '#/components/responses/Error401' }
+        '200':
+          description: "Admin tokens or 2FA challenge"
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/TokenPair'
+                  - $ref: '#/components/schemas/TwoFaRequired'
+        '401':
+          description: "Invalid credentials"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RawError' }
   /api/v1/auth/logout:
     post:
       tags: [Auth]
-      summary: "Logout (revoke session)"
+      summary: "Logout (client removes tokens)"
+      description: "Raw JSON `{ message }`. Server-side Redis session cleanup is client-driven."
       x-status: implemented
       responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
-        '401': { $ref: '#/components/responses/Error401' }
+        '200':
+          description: "Logged out"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Logged out successfully (Remove token on client side)" }
   /api/v1/auth/reset-password:
     post:
       tags: [Auth]
       summary: "Reset password (phone OTP verify)"
+      description: "Raw JSON `{ message }` on success. Roles: OWNER | COORDINATOR only."
       x-status: implemented
+      security: []
       requestBody:
         required: true
         content:
@@ -244,8 +400,19 @@ paths:
                 newPassword: { type: string, format: password }
                 role: { type: string, enum: [OWNER, COORDINATOR] }
       responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
-        '400': { $ref: '#/components/responses/Error400' }
+        '200':
+          description: "Password reset"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Password reset successfully" }
+        '400':
+          description: "Validation / OTP error"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RawError' }
   /api/v1/auth/2fa/setup:
     post:
       tags: [Auth]
@@ -354,7 +521,7 @@ paths:
     get:
       tags: [Auth]
       summary: "Current user profile + roles + setup flags"
-      description: "Returns JWT claims. For COORDINATOR, also returns current `permissions` (loaded fresh from DB)."
+      description: "Envelope `{ success, data }`. `data`: sub, tenant_id, role, name, contact, setup flags; COORDINATOR also gets fresh `permissions`."
       x-status: implemented
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
@@ -2980,6 +3147,47 @@ components:
         message: { type: string, example: OK }
         data: { description: Payload (shape varies per operation) }
         timestamp: { type: string, format: date-time }
+    RawError:
+      type: object
+      description: "Legacy raw error (auth + many CRUD endpoints) — not the envelope"
+      required: [error]
+      properties:
+        error: { type: string, example: "Invalid credentials" }
+    TokenPair:
+      type: object
+      required: [accessToken, refreshToken]
+      properties:
+        message: { type: string, example: "Login successful" }
+        accessToken: { type: string, description: "JWT, 1h" }
+        refreshToken: { type: string, description: "JWT, 7d" }
+    TwoFaRequired:
+      type: object
+      required: [message, tempToken]
+      properties:
+        message: { type: string, example: "2FA required" }
+        tempToken: { type: string, description: "Short-lived temp JWT for verify-2fa" }
+    TenantLoginSuccess:
+      type: object
+      required: [message, accessToken, refreshToken, user]
+      properties:
+        message: { type: string, example: "Login successful" }
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        permissions:
+          allOf:
+            - $ref: '#/components/schemas/CoordinatorPermissions'
+          description: "COORDINATOR only (top-level); absent for OWNER/STUDENT"
+        user:
+          type: object
+          required: [sub, tenant_id, role]
+          properties:
+            sub: { type: string, description: "tenant_id for OWNER; coordinator_id / student_id otherwise" }
+            tenant_id: { type: string, format: uuid }
+            role: { type: string, enum: [OWNER, COORDINATOR, STUDENT] }
+            permissions:
+              allOf:
+                - $ref: '#/components/schemas/CoordinatorPermissions'
+              description: "COORDINATOR only"
     Pagination:
       type: object
       properties:
