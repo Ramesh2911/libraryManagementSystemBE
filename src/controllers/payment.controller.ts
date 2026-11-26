@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { getTenantPrisma } from '../config/prisma';
 import { recordPaymentSchema } from '../validations/payment.validation';
+import { createInAppNotification } from '../services/inAppNotification.service';
 
 export const recordPayment = async (req: Request, res: Response) => {
   try {
@@ -75,6 +76,17 @@ export const recordPayment = async (req: Request, res: Response) => {
       }
 
       return payment;
+    });
+
+    // In-app notification (outside tx, fire-and-forget)
+    await createInAppNotification({
+      tenantId,
+      recipientRef: tenantId,
+      category: 'PAYMENT_SUCCESS',
+      title: 'Fee Payment Received',
+      message: `Payment of ${result.amount} ${result.currency} recorded successfully.`,
+      referenceType: 'payment',
+      referenceId: result.payment_id,
     });
 
     res.status(201).json({ message: 'Payment recorded successfully', data: result });

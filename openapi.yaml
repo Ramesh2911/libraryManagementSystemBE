@@ -53,7 +53,11 @@ tags:
   - name: Admin
     description: "Super-admin platform metrics"
   - name: Owner Dashboard
-    description: "Dashboard (business-overview, revenue, seats/summary implemented); hubs, offers, notifications still planned - owner_dashboard_api.md"
+    description: "Dashboard, offers, notifications (business-overview, revenue, seats/summary, offers, notifications implemented); hubs/quick-actions still planned - owner_dashboard_api.md"
+  - name: Offers
+    description: "Offer banners CRUD + active feed (implemented)"
+  - name: Notifications
+    description: "In-app notifications list/unread/mark-read (implemented)"
   - name: Owner Analytics
     description: "Consolidated analytics + export (planned - owner_analytics_api.md)"
 security:
@@ -2431,18 +2435,191 @@ paths:
           schema: { type: string, enum: [this_month, last_month, this_year], default: this_month }
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
-  /api/v1/owner/dashboard/offers/active:
+  /api/v1/offers:
     get:
-      tags: [Owner Dashboard]
-      summary: "Active offer banners"
-      x-status: planned
+      tags: [Offers]
+      summary: "List offers (admin)"
+      description: "OWNER only. Optional `status` filter."
+      x-status: implemented
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, inactive, expired, deleted] }
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
-  /api/v1/owner/dashboard/offers/{id}/action:
     post:
-      tags: [Owner Dashboard]
-      summary: "Dismiss / apply offer banner"
-      x-status: planned
+      tags: [Offers]
+      summary: "Create offer"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, original_price, discounted_price]
+              properties:
+                title: { type: string }
+                original_price: { type: number }
+                discounted_price: { type: number }
+                description: { type: string }
+                library_id: { type: string, format: uuid, nullable: true }
+                tag: { type: string }
+                discount_label: { type: string }
+                discount_percentage: { type: integer, minimum: 0, maximum: 100 }
+                billing_cycle: { type: string }
+                action_label: { type: string }
+                action_route: { type: string }
+                is_visible: { type: boolean, default: true }
+                status: { type: string, enum: [active, inactive, expired] }
+                start_date: { type: string, format: date }
+                end_date: { type: string, format: date }
+                expires_at: { type: string, format: date-time }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+  /api/v1/offers/active:
+    get:
+      tags: [Offers]
+      summary: "Active offer banners"
+      description: "status=active, is_visible=true, within date window. Optional libraryId includes tenant-wide (null library_id) + matching library."
+      x-status: implemented
+      parameters:
+        - name: libraryId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/offers/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [Offers]
+      summary: "Update offer"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+    delete:
+      tags: [Offers]
+      summary: "Soft-delete offer (status=deleted)"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/v1/offers/{id}/action:
+    post:
+      tags: [Offers]
+      summary: "Record offer interaction (viewed|clicked|dismiss)"
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [viewed, clicked, dismiss] }
+                clientTimestamp: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/v1/notifications:
+    get:
+      tags: [Notifications]
+      summary: "List in-app notifications"
+      x-status: implemented
+      parameters:
+        - name: unread
+          in: query
+          schema: { type: string, enum: ['true', 'false'] }
+        - name: category
+          in: query
+          schema: { type: string, enum: [SYSTEM, PAYMENT_SUCCESS, FEE_REMINDER, ADMISSION, OVERDUE, PROMO] }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 200 }
+      responses:
+        '200':
+          description: "{unreadCount, notifications[]}"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          unreadCount: { type: integer }
+                          notifications:
+                            type: array
+                            items: { $ref: '#/components/schemas/Notification' }
+  /api/v1/notifications/unread-count:
+    get:
+      tags: [Notifications]
+      summary: "Unread badge + urgent alerts + latest"
+      x-status: implemented
+      responses:
+        '200':
+          description: "{unreadCount, hasUrgentAlerts, latestAlerts[]}"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          unreadCount: { type: integer }
+                          hasUrgentAlerts: { type: boolean }
+                          latestAlerts:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id: { type: string }
+                                title: { type: string }
+                                message: { type: string }
+                                category: { type: string }
+                                priority: { type: string }
+                                createdAt: { type: string, format: date-time }
+  /api/v1/notifications/mark-read:
+    patch:
+      tags: [Notifications]
+      summary: "Mark notifications read (markAll or ids[])"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                markAll: { type: boolean, default: false }
+                ids:
+                  type: array
+                  items: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+  /api/v1/notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: "Mark one notification read"
+      x-status: implemented
       parameters:
         - name: id
           in: path
@@ -2450,6 +2627,37 @@ paths:
           schema: { type: string }
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/v1/owner/dashboard/offers/active:
+    get:
+      tags: [Owner Dashboard]
+      summary: "Active offer banners (alias of /offers/active)"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+  /api/v1/owner/dashboard/offers/{id}/action:
+    post:
+      tags: [Owner Dashboard]
+      summary: "Dismiss / apply offer banner"
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [viewed, clicked, dismiss] }
+                clientTimestamp: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
   /api/v1/owner/dashboard/quick-actions:
     get:
       tags: [Owner Dashboard]
@@ -2460,15 +2668,15 @@ paths:
   /api/v1/owner/notifications/unread-count:
     get:
       tags: [Owner Dashboard]
-      summary: "Unread notification badge count"
-      x-status: planned
+      summary: "Unread notification badge count (alias)"
+      x-status: implemented
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
   /api/v1/owner/notifications/{id}/read:
     patch:
       tags: [Owner Dashboard]
-      summary: "Mark notification read"
-      x-status: planned
+      summary: "Mark notification read (alias of /notifications/{id}/read)"
+      x-status: implemented
       parameters:
         - name: id
           in: path
@@ -2476,6 +2684,7 @@ paths:
           schema: { type: string }
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
 
   # ===================== OWNER ANALYTICS (planned - owner_analytics_api.md) =====================
   /api/v1/owner/analytics:
@@ -2649,6 +2858,43 @@ components:
         visit_date_time: { type: string, format: date-time, nullable: true }
         notes: { type: string, nullable: true }
         status: { type: string, enum: [checked_in, checked_out] }
+    Offer:
+      type: object
+      properties:
+        offerId: { type: string, format: uuid }
+        libraryId: { type: string, format: uuid, nullable: true }
+        tag: { type: string }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        discountLabel: { type: string, nullable: true }
+        originalPrice: { type: number }
+        discountedPrice: { type: number }
+        discountPercentage: { type: integer, nullable: true }
+        currency: { type: string }
+        billingCycle: { type: string, nullable: true }
+        actionLabel: { type: string, nullable: true }
+        actionRoute: { type: string, nullable: true }
+        isVisible: { type: boolean }
+        status: { type: string, enum: [active, inactive, expired, deleted] }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        expiresAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    Notification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        message: { type: string }
+        type: { type: string }
+        category: { type: string, enum: [SYSTEM, PAYMENT_SUCCESS, FEE_REMINDER, ADMISSION, OVERDUE, PROMO] }
+        priority: { type: string, enum: [normal, urgent] }
+        isRead: { type: boolean }
+        readAt: { type: string, format: date-time, nullable: true }
+        referenceType: { type: string, nullable: true }
+        referenceId: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
     SeatStatus:
       type: string
       enum: [vacant, occupied, reserved, half_day, blocked, maintenance]

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { getTenantPrisma } from '../config/prisma';
 import { verifyOtp } from '../services/otp.service';
 import { createStudentSchema, updateStudentSchema } from '../validations/student.validation';
+import { createInAppNotification } from '../services/inAppNotification.service';
 
 export const registerStudent = async (req: Request, res: Response) => {
   try {
@@ -49,6 +50,16 @@ export const registerStudent = async (req: Request, res: Response) => {
         status: true,
         createdAt: true
       }
+    });
+
+    await createInAppNotification({
+      tenantId,
+      recipientRef: tenantId,
+      category: 'ADMISSION',
+      title: 'New Student Registered',
+      message: `${student.name} has been registered successfully.`,
+      referenceType: 'student',
+      referenceId: student.student_id,
     });
 
     res.status(201).json({ message: 'Student registered successfully', student });

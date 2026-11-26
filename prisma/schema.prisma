@@ -61,7 +61,9 @@ model Owner {
   visitors               Visitor[]
   overdueTracking        OverdueTracking[]
   activityLogs           ActivityLog[]
-  notifications          NotificationLog[]
+  notificationLogs       NotificationLog[]
+  offers                 Offer[]
+  notifications          Notification[]
   subscriptions          Subscription[]
   aiQueryLogs            AiQueryLog[]
   backups                BackupHistory[]
@@ -629,4 +631,54 @@ model AttendanceLog {
   student Student @relation(fields: [student_id], references: [student_id])
 
   @@map("attendance_logs")
+}
+
+model Offer {
+  offer_id            String    @id @default(uuid())
+  tenant_id           String
+  library_id          String? // null = tenant-wide
+  tag                 String    @default("LIMITED TIME OFFER")
+  title               String
+  description         String?
+  discount_label      String? // e.g. "69% OFF"
+  original_price      Float
+  discounted_price    Float
+  discount_percentage Int?
+  currency            String    @default("INR")
+  billing_cycle       String? // monthly, quarterly, yearly
+  action_label        String?
+  action_route        String?
+  is_visible          Boolean   @default(true)
+  status              String    @default("active") // active, inactive, expired, deleted
+  start_date          DateTime?
+  end_date            DateTime?
+  expires_at          DateTime?
+  created_by          String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  owner Owner @relation(fields: [tenant_id], references: [tenant_id])
+
+  @@map("offers")
+}
+
+model Notification {
+  notification_id String    @id @default(uuid())
+  tenant_id       String
+  recipient_ref   String // owner/coordinator/student id
+  recipient_role  String    @default("OWNER")
+  category        String    @default("SYSTEM") // SYSTEM, PAYMENT_SUCCESS, FEE_REMINDER, ADMISSION, OVERDUE, PROMO
+  title           String
+  message         String
+  isRead          Boolean   @default(false)
+  readAt          DateTime?
+  priority        String    @default("normal") // normal, urgent
+  reference_type  String?
+  reference_id    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  owner Owner @relation(fields: [tenant_id], references: [tenant_id])
+
+  @@map("notifications")
 }

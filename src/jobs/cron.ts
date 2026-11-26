@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { prisma } from '../config/prisma';
+import { createInAppNotification } from '../services/inAppNotification.service';
 
 export const startCronJobs = () => {
   cron.schedule('0 0 * * *', async () => {
@@ -46,6 +47,18 @@ export const processOverdues = async () => {
           overdue_days: overdueDays,
           recovery_status: 'pending'
         }
+      });
+
+      // In-app urgent alert for owner
+      await createInAppNotification({
+        tenantId: obligation.tenant_id,
+        recipientRef: obligation.tenant_id,
+        category: 'FEE_REMINDER',
+        title: 'Fee Overdue',
+        message: `A student fee payment is ${overdueDays} day(s) overdue.`,
+        priority: 'urgent',
+        referenceType: 'fee_obligation',
+        referenceId: obligation.obligation_id,
       });
     } else {
       // Update existing overdue days

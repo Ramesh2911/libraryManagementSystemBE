@@ -25,6 +25,8 @@ ALTER TABLE "visitors" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "overdue_tracking" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "activity_logs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "notifications_log" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "offers" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "notifications" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "subscriptions" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ai_query_logs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "attendance_logs" ENABLE ROW LEVEL SECURITY;
@@ -133,6 +135,14 @@ CREATE POLICY tenant_isolation_policy ON "activity_logs"
   WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
 
 CREATE POLICY tenant_isolation_policy ON "notifications_log"
+  USING (tenant_id = current_setting('app.tenant_id', true))
+  WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
+
+CREATE POLICY tenant_isolation_policy ON "offers"
+  USING (tenant_id = current_setting('app.tenant_id', true))
+  WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
+
+CREATE POLICY tenant_isolation_policy ON "notifications"
   USING (tenant_id = current_setting('app.tenant_id', true))
   WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
 
