@@ -6,6 +6,7 @@ export const getReadingRooms = async (req: Request, res: Response) => {
   try {
     const tenantId = req.tenantId!;
     const libraryId = req.query.libraryId as string;
+    const floorId = req.query.floorId as string | undefined;
     const prismaTenant = getTenantPrisma(tenantId);
     
     if (!libraryId) {
@@ -13,9 +14,23 @@ export const getReadingRooms = async (req: Request, res: Response) => {
     }
 
     const rooms = await prismaTenant.readingRoom.findMany({
-      where: { library_id: libraryId, status: 'active' }
+      where: {
+        library_id: libraryId,
+        status: 'active',
+        ...(floorId ? { floor_id: floorId } : {}),
+      },
+      include: {
+        roomType: { select: { room_type_id: true, name: true } },
+      },
     });
-    res.json(rooms);
+    res.json(
+      rooms.map((r: any) => ({
+        ...r,
+        room_number: r.name ?? null,
+        total_seats: r.capacity,
+        room_type_name: r.roomType?.name ?? null,
+      }))
+    );
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch reading rooms' });
   }

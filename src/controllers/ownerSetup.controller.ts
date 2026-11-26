@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { Prisma } from '@prisma/client';
 import { redis } from '../config/redis';
 import { prisma } from '../config/prisma';
 import { ok, fail } from '../utils/response';
@@ -292,6 +293,19 @@ export const postFinalize = async (req: Request, res: Response) => {
             address: address || null,
             contact: basic.phone || null,
             status: 'active',
+            branch_name: basic.branchName ?? null,
+            owner_name: basic.ownerName ?? null,
+            mobile: basic.phone || null,
+            email: basic.email ?? null,
+            area: location.area ?? null,
+            unit: (location as any).unit ?? null,
+            city: location.city ?? null,
+            state: location.state ?? null,
+            pin_code: location.postalCode || location.pincode || null,
+            latitude: typeof location.latitude === 'number' ? location.latitude : null,
+            longitude: typeof location.longitude === 'number' ? location.longitude : null,
+            setup_status: 'COMPLETED',
+            completed_at: new Date(),
           },
         });
 
@@ -402,6 +416,31 @@ export const postFinalize = async (req: Request, res: Response) => {
           });
         }
 
+        // Persist operation details (open/close, working days, holidays)
+        const workingDays = timing.workingDays ?? timing.daysOpen ?? null;
+        const holidays = Array.isArray(timing.holidays)
+          ? timing.holidays.map((h: any, i: number) => ({
+              id: h.id ?? `holiday_${i + 1}`,
+              name: h.name,
+              date: h.date,
+            }))
+          : null;
+        const opPayload = {
+          opening_time: openTime,
+          closing_time: closeTime,
+          working_days: (workingDays ?? Prisma.DbNull) as any,
+          holidays: (holidays ?? Prisma.DbNull) as any,
+        };
+        await tx.libraryOperation.upsert({
+          where: { library_id: library.library_id },
+          create: {
+            tenant_id: tenantId,
+            library_id: library.library_id,
+            ...opPayload,
+          },
+          update: opPayload,
+        });
+
         // Fee plans (openapi shape: name/amount/cycle/depositAmount;
         // doc shape: roomType + fullDay/halfDay tiers)
         const feeCreates: any[] = [];
@@ -441,6 +480,54 @@ export const postFinalize = async (req: Request, res: Response) => {
           }
         }
         if (feeCreates.length > 0) await tx.feePlan.createMany({ data: feeCreates });
+
+        // Room type pricing (full_day/half_day structured) for display APIs
+        for (const plan of fees.feePlans ?? []) {
+          if (!plan.roomType || !plan.fullDay) continue;
+          const rtId = roomTypeById.get(String(plan.roomType).toLowerCase());
+          if (!rtId) continue;
+          await tx.roomTypePricing.upsert({
+            where: {
+              library_id_room_type_id: {
+                library_id: library.library_id,
+                room_type_id: rtId,
+              },
+            },
+            create: {
+              tenant_id: tenantId,
+              library_id: library.library_id,
+              room_type_id: rtId,
+              full_day_monthly_fee_per_seat: plan.fullDay.monthlyFee ?? plan.fullDay.dailyFee ?? 0,
+              full_day_security_deposit: plan.fullDay.deposit ?? 0,
+              full_day_deposit_type: plan.fullDay.depositType ?? 'REFUNDABLE',
+              full_day_advance_amount: plan.fullDay.advanceAmount ?? 0,
+              half_day_enabled: !!plan.halfDayEnabled,
+              half_day_monthly_fee_per_seat: plan.halfDayEnabled
+                ? plan.halfDay?.monthlyFee ?? plan.halfDay?.dailyFee ?? null
+                : null,
+              half_day_security_deposit: plan.halfDayEnabled ? plan.halfDay?.deposit ?? null : null,
+              half_day_deposit_type: plan.halfDayEnabled ? plan.halfDay?.depositType ?? null : null,
+              half_day_advance_amount: plan.halfDayEnabled
+                ? plan.halfDay?.advanceAmount ?? null
+                : null,
+            },
+            update: {
+              full_day_monthly_fee_per_seat: plan.fullDay.monthlyFee ?? plan.fullDay.dailyFee ?? 0,
+              full_day_security_deposit: plan.fullDay.deposit ?? 0,
+              full_day_deposit_type: plan.fullDay.depositType ?? 'REFUNDABLE',
+              full_day_advance_amount: plan.fullDay.advanceAmount ?? 0,
+              half_day_enabled: !!plan.halfDayEnabled,
+              half_day_monthly_fee_per_seat: plan.halfDayEnabled
+                ? plan.halfDay?.monthlyFee ?? plan.halfDay?.dailyFee ?? null
+                : null,
+              half_day_security_deposit: plan.halfDayEnabled ? plan.halfDay?.deposit ?? null : null,
+              half_day_deposit_type: plan.halfDayEnabled ? plan.halfDay?.depositType ?? null : null,
+              half_day_advance_amount: plan.halfDayEnabled
+                ? plan.halfDay?.advanceAmount ?? null
+                : null,
+            },
+          });
+        }
 
         const feePlanRows = await tx.feePlan.findMany({
           where: { library_id: library.library_id },

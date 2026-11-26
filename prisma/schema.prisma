@@ -68,28 +68,87 @@ model Owner {
   aiQueryLogs            AiQueryLog[]
   backups                BackupHistory[]
   attendanceLogs         AttendanceLog[]
+  libraryOperations     LibraryOperation[]
+  roomTypePricings      RoomTypePricing[]
 
   @@map("owners")
 }
 
 model Library {
-  library_id String   @id @default(uuid())
-  tenant_id  String
-  name       String
-  address    String?
-  logo_url   String?
-  contact    String?
-  status     String   @default("active") // active/deleted
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  library_id   String    @id @default(uuid())
+  tenant_id    String
+  name         String
+  address      String?
+  logo_url     String?
+  contact      String?
+  branch_name  String?
+  owner_name   String?
+  mobile       String?
+  email        String?
+  area         String?
+  unit         String?
+  city         String?
+  state        String?
+  pin_code     String?
+  latitude     Float?
+  longitude    Float?
+  setup_status String    @default("DRAFT") // DRAFT, IN_PROGRESS, COMPLETED
+  completed_at DateTime?
+  status       String    @default("active") // active/deleted
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  owner        Owner         @relation(fields: [tenant_id], references: [tenant_id])
-  floors       Floor[]
-  readingRooms ReadingRoom[]
-  timeSlots    TimeSlot[]
-  feePlans     FeePlan[]
+  owner              Owner               @relation(fields: [tenant_id], references: [tenant_id])
+  floors             Floor[]
+  readingRooms       ReadingRoom[]
+  timeSlots          TimeSlot[]
+  feePlans           FeePlan[]
+  operation          LibraryOperation?
+  roomTypePricings   RoomTypePricing[]
 
   @@map("libraries")
+}
+
+model LibraryOperation {
+  operation_id  String   @id @default(uuid())
+  tenant_id     String
+  library_id    String   @unique
+  opening_time  String? // "08:00"
+  closing_time  String? // "22:00"
+  working_days  Json? // ["MONDAY", ...] or [{day,isOpen}]
+  holidays      Json? // [{id?, name, date}]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  owner   Owner   @relation(fields: [tenant_id], references: [tenant_id])
+  library Library @relation(fields: [library_id], references: [library_id])
+
+  @@map("library_operations")
+}
+
+model RoomTypePricing {
+  pricing_id                  String   @id @default(uuid())
+  tenant_id                   String
+  library_id                  String
+  room_type_id                String
+  full_day_monthly_fee_per_seat  Float
+  full_day_security_deposit   Float    @default(0)
+  full_day_deposit_type       String   @default("REFUNDABLE") // REFUNDABLE, NON_REFUNDABLE
+  full_day_advance_amount     Float    @default(0)
+  half_day_enabled            Boolean  @default(false)
+  half_day_monthly_fee_per_seat Float?
+  half_day_security_deposit   Float?
+  half_day_deposit_type       String?
+  half_day_advance_amount     Float?
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  owner    Owner    @relation(fields: [tenant_id], references: [tenant_id])
+  library  Library  @relation(fields: [library_id], references: [library_id])
+  roomType RoomType @relation(fields: [room_type_id], references: [room_type_id])
+
+  @@unique([library_id, room_type_id])
+  @@map("room_type_pricings")
 }
 
 model Floor {
@@ -117,8 +176,9 @@ model RoomType {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  owner        Owner         @relation(fields: [tenant_id], references: [tenant_id])
+  owner        Owner              @relation(fields: [tenant_id], references: [tenant_id])
   readingRooms ReadingRoom[]
+  pricings     RoomTypePricing[]
 
   @@map("room_types")
 }

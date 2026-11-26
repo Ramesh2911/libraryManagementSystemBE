@@ -365,12 +365,20 @@ paths:
     get:
       tags: [Libraries]
       summary: "List libraries (hubs) for tenant"
+      description: "Returns raw array (legacy contract, not envelope)."
       x-status: implemented
       responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
+        '200':
+          description: "Array of libraries"
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Library' }
     post:
       tags: [Libraries]
       summary: "Create library hub"
+      description: "Envelope response. Accepts basic + location fields."
       x-status: implemented
       requestBody:
         required: true
@@ -382,8 +390,19 @@ paths:
               properties:
                 name: { type: string }
                 address: { type: string }
-                phone: { type: string }
+                contact: { type: string }
+                logo_url: { type: string }
+                branch_name: { type: string }
+                owner_name: { type: string }
+                mobile: { type: string }
                 email: { type: string }
+                area: { type: string }
+                unit: { type: string }
+                city: { type: string }
+                state: { type: string }
+                pin_code: { type: string }
+                latitude: { type: number }
+                longitude: { type: number }
       responses:
         '201': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }
@@ -393,9 +412,17 @@ paths:
         in: path
         required: true
         schema: { type: string }
+    get:
+      tags: [Libraries]
+      summary: "Get library by id (basic + location)"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
     patch:
       tags: [Libraries]
       summary: "Update library"
+      description: "Accepts basic + location + setup_status fields."
       x-status: implemented
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
@@ -403,6 +430,122 @@ paths:
     delete:
       tags: [Libraries]
       summary: "Delete library"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/v1/libraries/{id}/operation:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Libraries]
+      summary: "Get operation details (open/close, working days, slots, holidays)"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+    put:
+      tags: [Libraries]
+      summary: "Save/update operation details (upsert; replaces working_days + holidays)"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                opening_time: { type: string, example: '08:00' }
+                closing_time: { type: string, example: '22:00' }
+                working_days:
+                  type: array
+                  items: { type: string }
+                  example: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY]
+                holidays:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      name: { type: string }
+                      date: { type: string, format: date }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/v1/libraries/{id}/room-type-pricing:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Libraries]
+      summary: "Get room type pricing (full_day / half_day + deposit)"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+    put:
+      tags: [Libraries]
+      summary: "Save room type pricing (replace-all upsert by room_type_id)"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required: [room_type_id, full_day]
+                properties:
+                  room_type_id: { type: string, format: uuid }
+                  full_day:
+                    type: object
+                    required: [monthly_fee_per_seat]
+                    properties:
+                      monthly_fee_per_seat: { type: number }
+                      security_deposit: { type: number, default: 0 }
+                      deposit_type: { type: string, enum: [REFUNDABLE, NON_REFUNDABLE] }
+                      advance_amount: { type: number, default: 0 }
+                  half_day:
+                    type: object
+                    properties:
+                      enabled: { type: boolean }
+                      monthly_fee_per_seat: { type: number }
+                      security_deposit: { type: number }
+                      deposit_type: { type: string, enum: [REFUNDABLE, NON_REFUNDABLE] }
+                      advance_amount: { type: number }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/v1/libraries/{id}/setup:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Libraries]
+      summary: "Complete setup summary (basic + location + operation + floors/rooms + pricing)"
+      x-status: implemented
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/v1/libraries/{id}/setup/complete:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [Libraries]
+      summary: "Mark setup COMPLETED (idempotent - re-call returns 200)"
       x-status: implemented
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
@@ -2844,6 +2987,31 @@ components:
         pageSize: { type: integer, example: 20 }
         total: { type: integer, example: 137 }
         totalPages: { type: integer, example: 7 }
+    Library:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        library_id: { type: string, format: uuid }
+        name: { type: string }
+        branch_name: { type: string, nullable: true }
+        owner_name: { type: string, nullable: true }
+        mobile: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        contact: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        area: { type: string, nullable: true }
+        unit: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        state: { type: string, nullable: true }
+        pin_code: { type: string, nullable: true }
+        latitude: { type: number, nullable: true }
+        longitude: { type: number, nullable: true }
+        logo_url: { type: string, nullable: true }
+        setup_status: { type: string, enum: [DRAFT, IN_PROGRESS, COMPLETED] }
+        completed_at: { type: string, format: date-time, nullable: true }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     Visitor:
       type: object
       properties:

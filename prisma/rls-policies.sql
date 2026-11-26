@@ -27,6 +27,8 @@ ALTER TABLE "activity_logs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "notifications_log" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "offers" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "notifications" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "library_operations" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "room_type_pricings" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "subscriptions" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ai_query_logs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "attendance_logs" ENABLE ROW LEVEL SECURITY;
@@ -143,6 +145,14 @@ CREATE POLICY tenant_isolation_policy ON "offers"
   WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
 
 CREATE POLICY tenant_isolation_policy ON "notifications"
+  USING (tenant_id = current_setting('app.tenant_id', true))
+  WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
+
+CREATE POLICY tenant_isolation_policy ON "library_operations"
+  USING (tenant_id = current_setting('app.tenant_id', true))
+  WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
+
+CREATE POLICY tenant_isolation_policy ON "room_type_pricings"
   USING (tenant_id = current_setting('app.tenant_id', true))
   WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
 
