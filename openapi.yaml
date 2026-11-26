@@ -26,7 +26,7 @@ tags:
   - name: Auth
     description: "Authentication, OTP, sessions (doc: auth_api.md)"
   - name: Owner Setup
-    description: "6-step owner onboarding (planned - auth_api.md)"
+    description: "6-step owner onboarding (implemented)"
   - name: Student Self
     description: "Student self-profile (planned - auth_api.md)"
   - name: Libraries
@@ -1477,12 +1477,12 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
 
-  # ===================== OWNER SETUP (planned - auth_api.md) =====================
+  # ===================== OWNER SETUP (implemented) =====================
   /api/v1/owner/setup/basic-details:
     post:
       tags: [Owner Setup]
       summary: "Step 1 - owner + library basic details"
-      x-status: planned
+      x-status: implemented
       requestBody:
         required: true
         content:
@@ -1503,7 +1503,7 @@ paths:
     post:
       tags: [Owner Setup]
       summary: "Step 2 - address / geo"
-      x-status: planned
+      x-status: implemented
       requestBody:
         required: true
         content:
@@ -1524,7 +1524,7 @@ paths:
     post:
       tags: [Owner Setup]
       summary: "Step 3 - opening hours + time slots"
-      x-status: planned
+      x-status: implemented
       requestBody:
         required: true
         content:
@@ -1552,7 +1552,7 @@ paths:
     post:
       tags: [Owner Setup]
       summary: "Step 4 - floors + room types + reading rooms"
-      x-status: planned
+      x-status: implemented
       requestBody:
         required: true
         content:
@@ -1582,7 +1582,7 @@ paths:
     post:
       tags: [Owner Setup]
       summary: "Step 5 - fee plans + deposit config"
-      x-status: planned
+      x-status: implemented
       requestBody:
         required: true
         content:
@@ -1606,7 +1606,7 @@ paths:
     get:
       tags: [Owner Setup]
       summary: "Step 6a - review everything before finalize"
-      x-status: planned
+      x-status: implemented
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
   /api/v1/owner/setup/finalize:
@@ -1614,7 +1614,7 @@ paths:
       tags: [Owner Setup]
       summary: "Step 6b - commit draft (single transaction)"
       description: "Creates Library + Floor + RoomType + TimeSlots + ReadingRoom + Seats + FeePlan atomically."
-      x-status: planned
+      x-status: implemented
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '409': { $ref: '#/components/responses/Error409' }
