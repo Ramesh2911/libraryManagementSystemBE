@@ -53,7 +53,7 @@ tags:
   - name: Admin
     description: "Super-admin platform metrics"
   - name: Owner Dashboard
-    description: "Dashboard, hubs, offers, notifications (planned - owner_dashboard_api.md)"
+    description: "Dashboard (business-overview, revenue, seats/summary implemented); hubs, offers, notifications still planned - owner_dashboard_api.md"
   - name: Owner Analytics
     description: "Consolidated analytics + export (planned - owner_analytics_api.md)"
 security:
@@ -409,7 +409,7 @@ paths:
     get:
       tags: [Floors]
       summary: "List floors"
-      description: "Planned contract: returns `{items, total}` + `displayOrder`."
+      description: "When `libraryId` is provided, only floors of that library are returned."
       x-status: implemented
       parameters:
         - name: libraryId
@@ -458,7 +458,12 @@ paths:
     get:
       tags: [Room Types]
       summary: "List room types"
+      description: "When `libraryId` is provided, only room types used by that library's reading rooms are returned."
       x-status: implemented
+      parameters:
+        - name: libraryId
+          in: query
+          schema: { type: string }
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
     post:
@@ -626,6 +631,54 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }
+  /api/v1/seats/summary:
+    get:
+      tags: [Seats]
+      summary: "Seat summary counts for dashboard"
+      description: |
+        Counts for ACTIVE seats in a library (optional floor/roomType filters).
+        Invariants: `totalSeats = filledSeats + vacantSeats`,
+        `filledSeats = settledSeats + pendingSeats`.
+        `pendingSeats` = filled seats whose student has an overdue unpaid FeeObligation
+        (due_date in past, status in DUE/PARTIALLY_PAID/OVERDUE, amount_paid < amount_due).
+        Day boundaries use Asia/Kolkata (UTC+5:30).
+      x-status: implemented
+      parameters:
+        - name: libraryId
+          in: query
+          required: true
+          schema: { type: string }
+        - name: floorId
+          in: query
+          schema: { type: string }
+        - name: roomTypeId
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: "Seat summary"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          libraryId: { type: string }
+                          filters:
+                            type: object
+                            properties:
+                              floorId: { type: string, nullable: true }
+                              roomTypeId: { type: string, nullable: true }
+                          totalSeats: { type: integer }
+                          filledSeats: { type: integer }
+                          vacantSeats: { type: integer }
+                          pendingSeats: { type: integer }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
   /api/v1/seats/{id}/allocate:
     post:
       tags: [Seats]
@@ -1217,6 +1270,10 @@ paths:
           in: query
           schema: { type: string, enum: [checked_in, checked_out] }
           description: "Omit for All"
+        - name: libraryId
+          in: query
+          schema: { type: string }
+          description: "Filters the visitors array only; summary counts remain unfiltered"
         - name: from_date
           in: query
           schema: { type: string, format: date, example: '2026-11-01' }
@@ -2254,7 +2311,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
 
-  # ===================== OWNER DASHBOARD (planned - owner_dashboard_api.md) =====================
+  # ===================== OWNER DASHBOARD (business-overview + revenue implemented; rest planned - owner_dashboard_api.md) =====================
   /api/v1/owner/hubs:
     get:
       tags: [Owner Dashboard]
@@ -2341,28 +2398,37 @@ paths:
     get:
       tags: [Owner Dashboard]
       summary: "Business overview stats (students, revenue, dues)"
-      x-status: planned
+      description: |
+        Metrics scoped to authenticated tenant and optional `libraryId`.
+        Day/month boundaries use Asia/Kolkata (UTC+5:30).
+        `delayOverdue.count` = distinct students with overdue unpaid fees;
+        `overdueAmount` = sum of (amount_due - amount_paid) for those fees.
+        `todayCollection` / `monthlyRevenue` count Payment status=SUCCESS only.
+        `visitToday` counts visitors scheduled (or checked in) today.
+      x-status: implemented
       parameters:
-        - name: period
+        - name: libraryId
           in: query
-          schema: { type: string, enum: [today, week, this_month, last_month, custom] }
+          schema: { type: string }
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
   /api/v1/owner/dashboard/revenue:
     get:
       tags: [Owner Dashboard]
       summary: "Revenue by period + chart buckets"
-      x-status: planned
+      description: |
+        SUCCESS payments only. `period`: this_month/last_month (daily buckets),
+        this_year (monthly buckets). Growth is null when previous period revenue is 0.
+        Timezone: Asia/Kolkata (UTC+5:30).
+      x-status: implemented
       parameters:
+        - name: libraryId
+          in: query
+          schema: { type: string }
         - name: period
           in: query
-          schema: { type: string, enum: [today, week, this_month, last_month, custom] }
-        - name: from
-          in: query
-          schema: { type: string, format: date }
-        - name: to
-          in: query
-          schema: { type: string, format: date }
+          schema: { type: string, enum: [this_month, last_month, this_year], default: this_month }
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
   /api/v1/owner/dashboard/offers/active:

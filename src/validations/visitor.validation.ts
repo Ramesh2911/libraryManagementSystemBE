@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { uuidField } from './common';
 
 export const VISITOR_PURPOSES = [
   'Study / Workspace Visit',
@@ -38,6 +39,7 @@ export type CreateVisitorInput = z.infer<typeof createVisitorSchema>;
 export const listVisitorsQuerySchema = z.object({
   search: z.string().optional(),
   status: z.enum(['checked_in', 'checked_out']).optional(),
+  libraryId: uuidField().optional(),
   from_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD').optional(),
   to_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD').optional(),
 });

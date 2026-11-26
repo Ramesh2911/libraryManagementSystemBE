@@ -47,8 +47,9 @@ export const getVisitors = async (req: Request, res: Response) => {
     const checked_in_count = await prisma.visitor.count({ where: { status: 'CHECKED_IN' } });
     const checked_out_count = await prisma.visitor.count({ where: { status: 'CHECKED_OUT' } });
 
-    // Filters apply only to the visitors array
+    // Filters apply only to the visitors array (summary stays unfiltered - openapi contract)
     const where: any = {};
+    if (q.libraryId) where.library_id = q.libraryId;
     if (q.status) where.status = TO_DB_STATUS[q.status];
     if (q.search) {
       const s = q.search;

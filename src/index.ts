@@ -43,6 +43,7 @@ import coordinatorRoutes from './routes/coordinator.routes';
 import aiRoutes from './routes/ai.routes';
 import adminRoutes from './routes/admin.routes';
 import ownerSetupRoutes from './routes/ownerSetup.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 import { swaggerUi, openapiSpec, swaggerUiOptions } from './swagger';
 import './jobs/cron'; // Start cron jobs
 
@@ -67,6 +68,7 @@ const mounts: Array<[string, import('express').Router]> = [
   ['/ai', aiRoutes],
   ['/admin', adminRoutes],
   ['/owner/setup', ownerSetupRoutes],
+  ['/owner/dashboard', dashboardRoutes],
 ];
 for (const [path, router] of mounts) {
   app.use(`/api/v1${path}`, router);

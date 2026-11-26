@@ -5,10 +5,15 @@ import { createFloorSchema, updateFloorSchema } from '../validations/floor.valid
 export const getFloors = async (req: Request, res: Response) => {
   try {
     const tenantId = req.tenantId!;
+    const libraryId = req.query.libraryId as string | undefined;
     const prismaTenant = getTenantPrisma(tenantId);
-    
+
     const floors = await prismaTenant.floor.findMany({
-      where: { status: { not: 'deleted' } }
+      where: {
+        status: { not: 'deleted' },
+        ...(libraryId ? { library_id: libraryId } : {}),
+      },
+      orderBy: { createdAt: 'asc' },
     });
     res.json(floors);
   } catch (error) {

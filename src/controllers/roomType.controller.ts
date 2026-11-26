@@ -5,10 +5,18 @@ import { createRoomTypeSchema, updateRoomTypeSchema } from '../validations/roomT
 export const getRoomTypes = async (req: Request, res: Response) => {
   try {
     const tenantId = req.tenantId!;
+    const libraryId = req.query.libraryId as string | undefined;
     const prismaTenant = getTenantPrisma(tenantId);
-    
+
     const roomTypes = await prismaTenant.roomType.findMany({
-      where: { status: { not: 'deleted' } }
+      where: {
+        status: { not: 'deleted' },
+        // RoomType has no library_id - filter by actual usage in the library's reading rooms
+        ...(libraryId
+          ? { readingRooms: { some: { library_id: libraryId, status: 'active' } } }
+          : {}),
+      },
+      orderBy: { name: 'asc' },
     });
     res.json(roomTypes);
   } catch (error) {
