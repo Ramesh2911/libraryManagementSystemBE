@@ -1616,7 +1616,9 @@ paths:
       description: "Creates Library + Floor + RoomType + TimeSlots + ReadingRoom + Seats + FeePlan atomically."
       x-status: implemented
       responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '404': { $ref: '#/components/responses/Error404' }
         '409': { $ref: '#/components/responses/Error409' }
 
   # ===================== STUDENT SELF (planned - auth_api.md) =====================
