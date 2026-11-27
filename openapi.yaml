@@ -1403,11 +1403,12 @@ paths:
         '200': { $ref: '#/components/responses/Envelope200' }
         '404': { $ref: '#/components/responses/Error404' }
 
-  # ===================== ATTENDANCE (existing) =====================
+  # ===================== ATTENDANCE (3-role: Owner / Coordinator / Student) =====================
   /api/v1/attendance/sync:
     post:
       tags: [Attendance]
       summary: "Bulk ping sync (device entry/exit logs)"
+      description: "Legacy raw response shape kept for existing biometric client."
       x-status: implemented
       requestBody:
         required: true
@@ -1428,150 +1429,311 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Envelope200' }
         '400': { $ref: '#/components/responses/Error400' }
+  /api/v1/attendance/qr/session:
+    post:
+      tags: [Attendance]
+      summary: "Create QR session for a reading room"
+      description: |
+        OWNER/COORDINATOR. Opaque `qrPayload` (base64url random). Stops any previous active session for the room.
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [readingRoomId, attendanceDate, actionType]
+              properties:
+                readingRoomId: { type: string }
+                validForSeconds: { type: integer, default: 300, minimum: 30, maximum: 86400 }
+                attendanceDate: { type: string, example: '2026-11-27' }
+                actionType: { type: string, enum: [check_in, check_out] }
+      responses:
+        '201': { $ref: '#/components/responses/Envelope200' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '404': { $ref: '#/components/responses/Error404' }
+    get:
+      tags: [Attendance]
+      summary: "Active QR session for a reading room"
+      x-status: implemented
+      parameters:
+        - name: readingRoomId
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404':
+          description: "NO_ACTIVE_SESSION or room not found"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+  /api/v1/attendance/qr/session/stop:
+    post:
+      tags: [Attendance]
+      summary: "Stop active QR session"
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [readingRoomId, sessionId]
+              properties:
+                readingRoomId: { type: string }
+                sessionId: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Envelope200' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/v1/attendance/qr/check-in:
+    post:
+      tags: [Attendance]
+      summary: "Student QR check-in (JWT sub = studentId)"
+      description: |
+        STUDENT only. Validates QR session (invalid/expired/stopped/action mismatch), seat eligibility, one record per day.
+        Idempotent on `deviceEventId`.
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [qrPayload, deviceEventId]
+              properties:
+                qrPayload: { type: string }
+                deviceEventId: { type: string, minLength: 8, maxLength: 128 }
+      responses:
+        '200':
+          description: "Attendance check-in recorded"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400':
+          description: "INVALID_QR | QR_SESSION_EXPIRED | QR_SESSION_STOPPED | QR_ACTION_MISMATCH | VALIDATION_FAILED"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '403':
+          description: "STUDENT_NOT_ASSIGNED_TO_LIBRARY"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '409':
+          description: "ATTENDANCE_ALREADY_CHECKED_IN"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+  /api/v1/attendance/qr/check-out:
+    post:
+      tags: [Attendance]
+      summary: "Student QR check-out (JWT sub = studentId)"
+      description: "Requires open checked_in; check-out room must equal check-in room (ROOM_MISMATCH)."
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [qrPayload, deviceEventId]
+              properties:
+                qrPayload: { type: string }
+                deviceEventId: { type: string, minLength: 8, maxLength: 128 }
+      responses:
+        '200':
+          description: "Attendance check-out recorded"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400':
+          description: "INVALID_QR | QR_SESSION_EXPIRED | QR_SESSION_STOPPED | QR_ACTION_MISMATCH"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '409':
+          description: "NO_ACTIVE_CHECK_IN | ROOM_MISMATCH"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+  /api/v1/attendance/manual:
+    post:
+      tags: [Attendance]
+      summary: "Manual check-in/check-out (Owner/Coordinator)"
+      description: |
+        Staff gate + library/room scope + student seat eligibility. Writes AttendanceAudit. Idempotent on deviceEventId.
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studentId, libraryId, readingRoomId, action, reason, deviceEventId]
+              properties:
+                studentId: { type: string }
+                libraryId: { type: string }
+                readingRoomId: { type: string }
+                action: { type: string, enum: [check_in, check_out] }
+                reason: { type: string, minLength: 3, maxLength: 500 }
+                source: { type: string, enum: [manual] }
+                deviceEventId: { type: string, minLength: 8, maxLength: 128 }
+      responses:
+        '200':
+          description: "Manual attendance recorded"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '403':
+          description: "FORBIDDEN_LIBRARY_SCOPE | READING_ROOM_NOT_IN_ACTIVE_LIBRARY | STUDENT_NOT_ASSIGNED_TO_LIBRARY"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '404': { $ref: '#/components/responses/Error404' }
+        '409':
+          description: "ATTENDANCE_ALREADY_CHECKED_IN | NO_ACTIVE_CHECK_IN"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+  /api/v1/attendance/{attendanceId}/correct:
+    patch:
+      tags: [Attendance]
+      summary: "Correct attendance status with audit reason"
+      description: "Status-only (present|absent|late|half_day|leave|pending). Writes AttendanceAudit with previous/new values."
+      x-status: implemented
+      parameters:
+        - name: attendanceId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, reason]
+              properties:
+                status: { type: string, enum: [present, absent, late, half_day, leave, pending] }
+                reason: { type: string, minLength: 3, maxLength: 500 }
+                notes: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: "Attendance corrected"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '404':
+          description: "ATTENDANCE_NOT_FOUND"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+  /api/v1/attendance:
+    get:
+      tags: [Attendance]
+      summary: "Daily attendance register (summary + paginated rows)"
+      description: "OWNER tenant-wide; COORDINATOR assigned libraries/rooms only. Missing logs = pending."
+      x-status: implemented
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema: { type: string, example: '2026-11-27' }
+        - name: libraryId
+          in: query
+          schema: { type: string }
+        - name: readingRoomId
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string, enum: [present, absent, late, half_day, leave, pending, checked_in] }
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+      responses:
+        '200':
+          description: "Daily register"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '403': { $ref: '#/components/responses/Error403' }
+  /api/v1/attendance/report/monthly:
+    get:
+      tags: [Attendance]
+      summary: "Monthly per-student attendance report"
+      x-status: implemented
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema: { type: string, example: '2026-11' }
+        - name: libraryId
+          in: query
+          schema: { type: string }
+        - name: readingRoomId
+          in: query
+          schema: { type: string }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: "Monthly report with summary + students[]"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '403': { $ref: '#/components/responses/Error403' }
   /api/v1/attendance/{studentId}:
     get:
       tags: [Attendance]
       summary: "Student attendance history"
-      description: "Planned contract adds `from`, `to`, `month`, `status`, `page`, `pageSize` + pagination."
+      description: |
+        STUDENT may only fetch own `sub`. OWNER/COORDINATOR (attendance module) may fetch any student in tenant.
+        Envelope + pagination.
       x-status: implemented
       parameters:
         - name: studentId
           in: path
           required: true
           schema: { type: string }
-        - name: from
-          in: query
-          schema: { type: string, format: date }
-          x-status: planned
-        - name: to
-          in: query
-          schema: { type: string, format: date }
-          x-status: planned
         - name: month
           in: query
           schema: { type: string, example: '2026-11' }
-          x-status: planned
         - name: status
           in: query
-          schema: { type: string, enum: [PRESENT, ABSENT, LATE, HALF_DAY] }
-          x-status: planned
-        - name: page
-          in: query
-          schema: { type: integer }
-          x-status: planned
-      responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
-
-  # ===================== ATTENDANCE (planned - QR + register) =====================
-  /api/v1/attendance/qr/session:
-    post:
-      tags: [Attendance]
-      summary: "Create QR session for room"
-      description: "Planned - owner/coordinator; signed QR payload valid for limited window."
-      x-status: planned
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [readingRoomId]
-              properties:
-                readingRoomId: { type: string }
-                durationMinutes: { type: integer, default: 30 }
-      responses:
-        '201': { $ref: '#/components/responses/Envelope200' }
-        '403': { $ref: '#/components/responses/Error403' }
-    get:
-      tags: [Attendance]
-      summary: "Active QR session for room"
-      x-status: planned
-      parameters:
-        - name: readingRoomId
-          in: query
-          required: true
-          schema: { type: string }
-      responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
-        '404': { $ref: '#/components/responses/Error404' }
-  /api/v1/attendance/qr/session/stop:
-    post:
-      tags: [Attendance]
-      summary: "Stop active QR session"
-      x-status: planned
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [readingRoomId]
-              properties:
-                readingRoomId: { type: string }
-      responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
-  /api/v1/attendance/qr/check-in:
-    post:
-      tags: [Attendance]
-      summary: "Student QR check-in (idempotent via deviceEventId)"
-      x-status: planned
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [payload, deviceEventId]
-              properties:
-                payload: { type: string, description: Signed QR token }
-                deviceEventId: { type: string, format: uuid }
-      responses:
-        '201': { $ref: '#/components/responses/Envelope200' }
-        '401': { $ref: '#/components/responses/Error401' }
-        '409': { $ref: '#/components/responses/Error409' }
-  /api/v1/attendance:
-    get:
-      tags: [Attendance]
-      summary: "Daily attendance register (summary + paginated rows)"
-      description: "Planned - owner tenant-wide, coordinator assigned rooms only."
-      x-status: planned
-      parameters:
-        - name: date
-          in: query
-          schema: { type: string, format: date }
-        - name: readingRoomId
-          in: query
-          schema: { type: string }
-        - name: status
-          in: query
-          schema: { type: string, enum: [PRESENT, ABSENT, LATE, HALF_DAY] }
+          schema: { type: string, enum: [present, absent, late, half_day, leave, pending, checked_in] }
         - name: page
           in: query
           schema: { type: integer, default: 1 }
         - name: pageSize
           in: query
-          schema: { type: integer, default: 20 }
+          schema: { type: integer, default: 50 }
       responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
-        '403': { $ref: '#/components/responses/Error403' }
-  /api/v1/attendance/report/monthly:
-    get:
-      tags: [Attendance]
-      summary: "Monthly per-student attendance report"
-      x-status: planned
-      parameters:
-        - name: month
-          in: query
-          required: true
-          schema: { type: string, example: '2026-11' }
-        - name: studentId
-          in: query
-          schema: { type: string }
-        - name: readingRoomId
-          in: query
-          schema: { type: string }
-      responses:
-        '200': { $ref: '#/components/responses/Envelope200' }
+        '200':
+          description: "Paginated history records"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '403':
+          description: "FORBIDDEN when student accesses another student's history"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '404': { $ref: '#/components/responses/Error404' }
 
   # ===================== VISITORS =====================
   /api/v1/visitors:

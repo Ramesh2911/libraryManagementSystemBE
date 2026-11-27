@@ -68,6 +68,8 @@ model Owner {
   aiQueryLogs            AiQueryLog[]
   backups                BackupHistory[]
   attendanceLogs         AttendanceLog[]
+  attendanceQrSessions   AttendanceQrSession[]
+  attendanceAudits       AttendanceAudit[]
   libraryOperations     LibraryOperation[]
   roomTypePricings      RoomTypePricing[]
 
@@ -105,6 +107,8 @@ model Library {
   feePlans           FeePlan[]
   operation          LibraryOperation?
   roomTypePricings   RoomTypePricing[]
+  attendanceLogs     AttendanceLog[]
+  attendanceQrSessions AttendanceQrSession[]
 
   @@map("libraries")
 }
@@ -203,6 +207,8 @@ model ReadingRoom {
   roomType               RoomType?               @relation(fields: [room_type_id], references: [room_type_id])
   seats                  Seat[]
   coordinatorAssignments CoordinatorAssignment[]
+  attendanceLogs         AttendanceLog[]
+  attendanceQrSessions   AttendanceQrSession[]
 
   @@map("reading_rooms")
 }
@@ -678,19 +684,81 @@ model BackupHistory {
 }
 
 model AttendanceLog {
-  log_id     String    @id @default(uuid())
-  tenant_id  String
-  student_id String
-  date       DateTime  @db.Date
-  entry_time DateTime
-  exit_time  DateTime?
-  status     String    @default("present") // present/absent
-  createdAt  DateTime  @default(now())
+  log_id            String    @id @default(uuid())
+  tenant_id         String
+  student_id        String
+  library_id        String?
+  reading_room_id   String?
+  session_id        String?
+  date              DateTime  @db.Date
+  entry_time        DateTime
+  exit_time         DateTime?
+  status            String    @default("present") // checked_in, present, absent, late, half_day, leave, pending
+  source            String    @default("sync") // qr | manual | sync
+  device_event_id   String?   @unique
+  corrected_by      String?
+  corrected_at      DateTime?
+  correction_reason String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  owner   Owner   @relation(fields: [tenant_id], references: [tenant_id])
-  student Student @relation(fields: [student_id], references: [student_id])
+  owner        Owner              @relation(fields: [tenant_id], references: [tenant_id])
+  student      Student            @relation(fields: [student_id], references: [student_id])
+  library      Library?           @relation(fields: [library_id], references: [library_id])
+  readingRoom  ReadingRoom?       @relation(fields: [reading_room_id], references: [room_id])
+  session      AttendanceQrSession? @relation(fields: [session_id], references: [session_id])
+  audits       AttendanceAudit[]
 
+  @@index([tenant_id, date])
+  @@index([tenant_id, student_id, date])
+  @@index([tenant_id, library_id, date])
   @@map("attendance_logs")
+}
+
+model AttendanceQrSession {
+  session_id        String   @id @default(uuid())
+  tenant_id         String
+  library_id        String
+  reading_room_id   String
+  action_type       String // check_in | check_out
+  qr_payload        String   @unique
+  valid_for_seconds Int      @default(300)
+  status            String   @default("active") // active | stopped | expired
+  issued_at         DateTime @default(now())
+  expires_at        DateTime
+  stopped_at        DateTime?
+  created_by        String // owner.tenant_id or coordinator_id from JWT sub
+  created_by_role   String // OWNER | COORDINATOR
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  owner       Owner           @relation(fields: [tenant_id], references: [tenant_id])
+  library     Library         @relation(fields: [library_id], references: [library_id])
+  readingRoom ReadingRoom     @relation(fields: [reading_room_id], references: [room_id])
+  logs        AttendanceLog[]
+
+  @@index([tenant_id, reading_room_id, status])
+  @@map("attendance_qr_sessions")
+}
+
+model AttendanceAudit {
+  audit_id            String   @id @default(uuid())
+  tenant_id           String
+  attendance_id       String
+  action              String // manual_check_in | manual_check_out | correct
+  performed_by        String
+  performed_by_role   String // OWNER | COORDINATOR
+  reason              String
+  notes               String?
+  previous_value      Json?
+  new_value           Json?
+  performed_at        DateTime @default(now())
+
+  owner       Owner         @relation(fields: [tenant_id], references: [tenant_id])
+  attendance  AttendanceLog @relation(fields: [attendance_id], references: [log_id])
+
+  @@index([tenant_id, attendance_id])
+  @@map("attendance_audits")
 }
 
 model Offer {

@@ -32,6 +32,8 @@ ALTER TABLE "room_type_pricings" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "subscriptions" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ai_query_logs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "attendance_logs" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "attendance_qr_sessions" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "attendance_audits" ENABLE ROW LEVEL SECURITY;
 
 -- Create policies that ensure records are only visible/modifiable if they match the current tenant_id context
 -- The app.tenant_id context will be set by Prisma using `SELECT set_config('app.tenant_id', '...', true)`
@@ -165,6 +167,14 @@ CREATE POLICY tenant_isolation_policy ON "ai_query_logs"
   WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
 
 CREATE POLICY tenant_isolation_policy ON "attendance_logs"
+  USING (tenant_id = current_setting('app.tenant_id', true))
+  WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
+
+CREATE POLICY tenant_isolation_policy ON "attendance_qr_sessions"
+  USING (tenant_id = current_setting('app.tenant_id', true))
+  WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
+
+CREATE POLICY tenant_isolation_policy ON "attendance_audits"
   USING (tenant_id = current_setting('app.tenant_id', true))
   WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
 
