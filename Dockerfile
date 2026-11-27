@@ -20,5 +20,6 @@ COPY . .
 RUN npm run build
 
 # Expose port and start (db push ensures schema on fresh DB)
+# --accept-data-loss: unique constraint on new nullable device_event_id is safe (all NULLs)
 EXPOSE 5000
-CMD ["sh", "-c", "npx prisma db push --skip-generate && npm start"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && npm start"]
