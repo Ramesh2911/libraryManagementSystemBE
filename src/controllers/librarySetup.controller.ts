@@ -340,6 +340,7 @@ export const getPricing = async (req: Request, res: Response) => {
 
     return ok(res, rows.map(toPricingDto), 'Room type pricing fetched successfully');
   } catch (error) {
+    console.error('getPricing error:', error);
     return fail(res, 'Failed to fetch room type pricing', 500);
   }
 };
@@ -357,11 +358,27 @@ export const putPricing = async (req: Request, res: Response) => {
     });
     if (!lib) return fail(res, 'Library not found', 404, 'NOT_FOUND');
 
+    // Every room_type_id must exist in room_types (FK) — reject early with 400 instead of 500
+    const keepIds = [...new Set(items.map((i) => i.room_type_id))];
+    const existing = await prisma.roomType.findMany({
+      where: { room_type_id: { in: keepIds } },
+      select: { room_type_id: true },
+    });
+    const existingIds = new Set(existing.map((r) => r.room_type_id));
+    const missing = keepIds.filter((id) => !existingIds.has(id));
+    if (missing.length > 0) {
+      return fail(
+        res,
+        `Unknown room_type_id: ${missing.join(', ')}. Create the room types first via POST /api/v1/room-types.`,
+        400,
+        'UNKNOWN_ROOM_TYPE'
+      );
+    }
+
     // replace-all upsert in one transaction
     await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
 
-      const keepIds = items.map((i) => i.room_type_id);
       await tx.roomTypePricing.deleteMany({
         where: { library_id: libraryId, room_type_id: { notIn: keepIds } },
       });
@@ -407,6 +424,13 @@ export const putPricing = async (req: Request, res: Response) => {
   } catch (error: any) {
     if (error.name === 'ZodError') {
       return fail(res, 'Validation failed', 400, 'VALIDATION_FAILED');
+    }
+    console.error('putPricing error:', error);
+    if (error.code === 'P2003') {
+      return fail(res, 'Foreign key constraint failed (unknown room_type_id, library_id, or tenant_id)', 400, 'FK_VIOLATION');
+    }
+    if (error.code === 'P2028') {
+      return fail(res, 'Transaction timed out - please retry', 500, 'TX_TIMEOUT');
     }
     return fail(res, 'Failed to save room type pricing', 500);
   }
