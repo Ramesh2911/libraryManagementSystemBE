@@ -54,9 +54,16 @@ export const createReadingRoom = async (req: Request, res: Response) => {
     const newRoom = await prismaTenant.readingRoom.create({
       data: { tenant_id: tenantId, ...validatedData }
     });
-    
-    // According to PRD, creating a Reading Room should optionally auto-generate seats.
-    // For now, we just create the room. Seats generation could be a separate utility endpoint.
+
+    // PRD: creating a Reading Room auto-generates seats (1..capacity).
+    const capacity = validatedData.capacity;
+    const seatData = Array.from({ length: capacity }, (_, i) => ({
+      tenant_id: tenantId,
+      room_id: newRoom.room_id,
+      seat_number: String(i + 1),
+      status: 'ACTIVE',
+    }));
+    await prismaTenant.seat.createMany({ data: seatData, skipDuplicates: true });
 
     res.status(201).json(newRoom);
   } catch (error: any) {

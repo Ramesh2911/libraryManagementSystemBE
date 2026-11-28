@@ -33,7 +33,11 @@ describe('Reading Room Controller', () => {
       },
       seat: {
         count: jest.fn(),
-      }
+        createMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      seatAssignment: {
+        count: jest.fn(),
+      },
     };
     (getTenantPrisma as jest.Mock).mockReturnValue(mockPrismaTenant);
   });
@@ -53,9 +57,14 @@ describe('Reading Room Controller', () => {
 
       await getReadingRooms(mockRequest as Request, mockResponse as Response);
       expect(mockPrismaTenant.readingRoom.findMany).toHaveBeenCalledWith({
-        where: { library_id: 'lib-1', status: 'active' }
+        where: { library_id: 'lib-1', status: 'active' },
+        include: {
+          roomType: { select: { room_type_id: true, name: true } },
+        },
       });
-      expect(jsonMock).toHaveBeenCalledWith(rooms);
+      expect(jsonMock).toHaveBeenCalledWith([
+        expect.objectContaining({ room_id: 'room-1', type: 'AC' }),
+      ]);
     });
   });
 
@@ -70,6 +79,14 @@ describe('Reading Room Controller', () => {
 
       expect(statusMock).toHaveBeenCalledWith(201);
       expect(jsonMock).toHaveBeenCalledWith(createdRoom);
+      expect(mockPrismaTenant.seat.createMany).toHaveBeenCalledWith({
+        data: expect.arrayContaining([
+          expect.objectContaining({ room_id: 'room-1', seat_number: '1', status: 'ACTIVE' }),
+          expect.objectContaining({ room_id: 'room-1', seat_number: '50', status: 'ACTIVE' }),
+        ]),
+        skipDuplicates: true,
+      });
+      expect(mockPrismaTenant.seat.createMany.mock.calls[0][0].data).toHaveLength(50);
     });
 
     it('should return 404 if library does not exist', async () => {
@@ -87,7 +104,7 @@ describe('Reading Room Controller', () => {
     it('should return 400 if reducing capacity below occupied seats', async () => {
       mockRequest.params = { id: 'room-1' };
       mockRequest.body = { capacity: 10 }; // trying to reduce to 10
-      mockPrismaTenant.seat.count.mockResolvedValue(15); // 15 occupied seats
+      mockPrismaTenant.seatAssignment.count.mockResolvedValue(15); // 15 occupied seats
 
       await updateReadingRoom(mockRequest as Request, mockResponse as Response);
 
@@ -99,7 +116,7 @@ describe('Reading Room Controller', () => {
   describe('deleteReadingRoom', () => {
     it('should return 400 if room has occupied seats', async () => {
       mockRequest.params = { id: 'room-1' };
-      mockPrismaTenant.seat.count.mockResolvedValue(5);
+      mockPrismaTenant.seatAssignment.count.mockResolvedValue(5);
 
       await deleteReadingRoom(mockRequest as Request, mockResponse as Response);
 
@@ -109,7 +126,7 @@ describe('Reading Room Controller', () => {
 
     it('should soft delete room if no occupied seats', async () => {
       mockRequest.params = { id: 'room-1' };
-      mockPrismaTenant.seat.count.mockResolvedValue(0);
+      mockPrismaTenant.seatAssignment.count.mockResolvedValue(0);
       mockPrismaTenant.readingRoom.update.mockResolvedValue({ room_id: 'room-1', status: 'deleted' });
 
       await deleteReadingRoom(mockRequest as Request, mockResponse as Response);
