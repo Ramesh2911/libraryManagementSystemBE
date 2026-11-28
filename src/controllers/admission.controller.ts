@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getTenantPrisma } from '../config/prisma';
+import { prisma, getTenantPrisma } from '../config/prisma';
 import { createAdmissionSchema, cancelAdmissionSchema } from '../validations/admission.validation';
 
 export const createAdmission = async (req: Request, res: Response) => {
@@ -10,7 +10,10 @@ export const createAdmission = async (req: Request, res: Response) => {
     
     const data = createAdmissionSchema.parse(req.body);
 
-    const result = await prismaTenant.$transaction(async (tx) => {
+    // Use base prisma.$transaction + set_config (getTenantPrisma already wraps
+    // each query in its own transaction — nesting prismaTenant.$transaction breaks).
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
       // 1. Verify student exists and has no active admission
       const student = await tx.student.findUnique({
         where: { student_id: data.student_id },
@@ -103,7 +106,8 @@ export const cancelAdmission = async (req: Request, res: Response) => {
     
     const { cancellation_reason } = cancelAdmissionSchema.parse(req.body);
 
-    const result = await prismaTenant.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
       const admission = await tx.admission.findUnique({
         where: { admission_id: admissionId }
       });

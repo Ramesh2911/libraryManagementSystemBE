@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getTenantPrisma } from '../config/prisma';
+import { prisma, getTenantPrisma } from '../config/prisma';
 import { allocateSeatSchema, transferSeatSchema, updateSeatStatusSchema } from '../validations/seat.validation';
 
 export const getSeatMap = async (req: Request, res: Response) => {
@@ -37,7 +37,8 @@ export const allocateSeat = async (req: Request, res: Response) => {
     
     const { student_id, admission_id, slot_id } = allocateSeatSchema.parse(req.body);
 
-    const result = await prismaTenant.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
       // Concurrency check: find active assignments for this seat and slot
       const existingAssignments = await tx.seatAssignment.findMany({
         where: {
